@@ -1,0 +1,35 @@
+.rating_input {
+  text-align: inherit;
+  font: inherit;
+  height: 100%;
+  width: 50%;
+  margin: 0 2px;
+}
+
+.rating_label {
+  width: 100%;
+}
+
+.rating_input::-webkit-inner-spin-button {
+  display: none;
+}
+
+.rating_arrow {
+  height: 100%;
+  width: 25%;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.rating_arrow:hover {
+  background-color: #4d4d4d;
+}
+
+.rating_span {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}

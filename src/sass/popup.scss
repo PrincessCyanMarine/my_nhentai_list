@@ -1,0 +1,130 @@
+*::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+*::-webkit-scrollbar-track {
+  background: none;
+}
+
+/* Handle */
+*::-webkit-scrollbar-thumb {
+  background: #8888883a;
+}
+
+/* Handle on hover */
+*::-webkit-scrollbar-thumb:hover {
+  background: #88888850;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+html,
+:root,
+body {
+  margin: 0;
+}
+
+body {
+  background-color: #191925;
+  color: #fafafa;
+  width: 500px;
+  // height: 600px;
+}
+
+input,
+button {
+  background-color: #222225;
+  color: #fafafa;
+  border: 3px black solid;
+  padding: 5px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h4 {
+  margin: 0;
+}
+
+.cover {
+  max-width: 100px;
+  height: auto;
+}
+
+main {
+  margin-top: 50px;
+  overflow: overlay;
+}
+
+#search-bar {
+  width: 100%;
+}
+
+#titles_list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin: 16px 0;
+  align-items: center;
+}
+
+#topbar {
+  display: flex;
+  background: #15151c;
+  width: 100%;
+  margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 50px;
+  align-content: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+#sorting-options {
+  width: fit-content;
+  position: fixed;
+  right: 0;
+  top: 50px;
+  background: #222225;
+  button {
+    padding: 16px;
+    width: 100%;
+    border: none;
+    height: 100%;
+  }
+  * {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  span {
+    margin: 0 8px;
+    gap: 0.4em;
+  }
+}
+
+#buttons {
+  margin: 8px 0;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  * {
+    width: 100%;
+    margin: 0 8px;
+  }
+}

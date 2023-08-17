@@ -1,0 +1,40 @@
+{
+  "scripts": {
+    "start": "nodemon --watch ./src --ext \"ts,json,html,scss\" --exec \"webpack && sass src/sass:dist/styles && cp ./src/*.json ./dist/ && cp ./src/*.html ./dist/\"",
+    "webpack": "webpack --mode development",
+    "build": "webpack --mode production",
+    "dev": "webpack --watch --mode development --progress"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.22.10",
+    "@babel/register": "^7.22.5",
+    "@types/chrome": "^0.0.241",
+    "@types/react": "^18.2.20",
+    "@types/react-dom": "^18.2.7",
+    "@types/react-icons": "^3.0.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^9.1.3",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "html-minimizer-webpack-plugin": "^4.4.0",
+    "nodemon": "^3.0.1",
+    "sass": "^1.65.1",
+    "sass-loader": "^13.3.2",
+    "style-loader": "^3.3.3",
+    "terser-webpack-plugin": "^5.3.9",
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.1.6",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-watch-files-plugin": "^1.2.1"
+  },
+  "dependencies": {
+    "fuse.js": "^6.6.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.10.1"
+  }
+}
