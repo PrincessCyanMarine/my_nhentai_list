@@ -31,6 +31,8 @@ export interface HentaiInfo {
   title: Title;
   upload_date: null;
   images: Images;
+  first_read?: number;
+  last_read?: number;
 }
 
 export interface Images {

@@ -1,0 +1,36 @@
+.sortingOptions {
+  z-index: 2;
+  width: fit-content;
+  position: fixed;
+  right: 0;
+  top: 50px;
+  background: #222225;
+  width: 180px;
+}
+
+.sortingOption {
+  font-weight: normal;
+  cursor: pointer;
+  padding: 16px;
+  background-color: #444;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  &.active {
+    font-weight: bold;
+    background-color: #333;
+  }
+  &:hover {
+    background-color: #555;
+  }
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(50px, 1fr));
+  gap: 8px;
+  margin: 16px;
+}

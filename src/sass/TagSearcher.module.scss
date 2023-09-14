@@ -1,0 +1,96 @@
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.tag {
+  cursor: pointer;
+  border-radius: 1em;
+  padding: 8px;
+  background-color: #1d1d27;
+  @extend .center;
+  &:hover {
+    color: #a9a9c5;
+    background-color: #3e3e43;
+  }
+  position: relative;
+}
+
+.tag_presenter {
+  font-size: 0.8em;
+  color: #a0a0a0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 8px;
+  margin: 0 8px;
+}
+
+.sorting_presenter {
+  @extend .tag_presenter;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+}
+
+.contentHider {
+  font-size: 2em;
+  margin: 16px;
+  display: flex;
+  gap: 0.1em;
+  align-items: center;
+  flex-direction: row;
+  cursor: pointer;
+}
+
+.selected {
+  background-color: #747483;
+  color: #fafafa;
+  &:hover {
+    color: #e3e3ff;
+    background-color: #3b3b4d;
+  }
+}
+
+.searchBar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  // justify-content: center;
+  margin: 16px;
+  gap: 8px;
+  input {
+    padding: 16px;
+    text-align: center;
+  }
+  button {
+    width: 100%;
+    padding: 16px;
+  }
+}
+.decoration {
+  color: #44ff44;
+  position: absolute;
+  left: 0em;
+  bottom: -0.5em;
+}
+.favorite {
+  @extend .decoration;
+  color: yellow;
+  bottom: unset;
+  top: -0.5em;
+}
+.contextMenu {
+  background-color: #525255;
+  color: #d2d2d2;
+  display: flex;
+  flex-direction: column;
+
+  * {
+    padding: 8px;
+    cursor: pointer;
+    &:hover {
+      background-color: #7d7d8b;
+      color: #ffffff;
+    }
+  }
+}

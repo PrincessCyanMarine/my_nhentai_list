@@ -19,13 +19,15 @@ declare global {
 // console.log(JSON.stringify(filterGallery(window.gallery)).length);
 // console.log("Sending message");
 
-let informationInjection = document.createElement("a");
-informationInjection.className = "my-nhentai-list-information-injection";
-informationInjection.style.display = "none";
-informationInjection.innerText = JSON.stringify(
-  JSON.stringify(filterGallery(window.gallery, true))
-);
-document.body.appendChild(informationInjection);
+if (!/\/g\/[0-9]+\/[0-9]+/.test(window.location.pathname)) {
+  let informationInjection = document.createElement("a");
+  informationInjection.className = "my-nhentai-list-information-injection";
+  informationInjection.style.display = "none";
+  informationInjection.innerText = JSON.stringify(
+    JSON.stringify(filterGallery(window.gallery))
+  );
+  document.body.appendChild(informationInjection);
+}
 // window.postMessage({ type: "FROM_PAGE", text: "Hello from the webpage!" }, "*");
 
 // window.onmessage = (event) => {
@@ -33,7 +35,7 @@ document.body.appendChild(informationInjection);
 //   event.source?.postMessage("Message received from extension");
 // };
 
-function filterGallery(gallery?: GalleryHentaiInfo, includeImages = false) {
+function filterGallery(gallery?: GalleryHentaiInfo) {
   if (!gallery) return;
   let {
     id,

@@ -8,12 +8,14 @@ import {
   existsSync,
   writeFile,
   writeFileSync,
+  rmSync,
 } from "fs";
 import { ProvidePlugin } from "webpack";
 import WatchExternalFilesPlugin from "webpack-watch-files-plugin";
 import TerserPlugin from "terser-webpack-plugin";
 import HtmlMinimizerPlugin from "html-minimizer-webpack-plugin";
 import CopyPlugin from "copy-webpack-plugin";
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 
 class MyFileCopier {
   constructor(options) {
@@ -125,6 +127,14 @@ var config = {
     new WatchExternalFilesPlugin({
       files: ["./src/**/*"],
     }),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, "src/popup.html"),
+          to: path.resolve(__dirname, "dist/popup.html"),
+        },
+      ],
+    }),
   ],
 };
 
@@ -143,6 +153,7 @@ module.exports = (env, argv) => {
       to: "dist/assets",
     },
   ]);
+
   if (argv.mode === "development")
     config = {
       ...config,
@@ -156,6 +167,10 @@ module.exports = (env, argv) => {
       },
     };
   else if (argv.mode === "production") {
+    if (existsSync(path.resolve(__dirname, "dist"))) {
+      console.log("Removing dist folder...");
+      rmSync(path.resolve(__dirname, "dist"), { recursive: true });
+    }
     config = {
       ...config,
       optimization: {
@@ -175,13 +190,11 @@ module.exports = (env, argv) => {
       },
       plugins: [
         ...config.plugins,
-        new CopyPlugin({
-          patterns: [
-            {
-              from: "src/popup.html",
-              to: "popup.html",
-            },
-          ],
+        new BundleAnalyzerPlugin({
+          analyzerMode: "static",
+          reportFilename: path.resolve(__dirname, "bundle-report.html"),
+          openAnalyzer: false,
+          defaultSizes: "gzip",
         }),
       ],
     };

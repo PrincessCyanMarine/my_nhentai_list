@@ -1,8 +1,8 @@
 const React = require("react");
 const ReactDOM = require("react-dom/client");
-const Popup = require("../components/Popup").default;
+const Popup = require("../pages/Popup").default;
 
-// require("../lib/live");
+require("../lib/live");
 
 const root = ReactDOM.createRoot(document.getElementById("react-app"));
 const render = () => {

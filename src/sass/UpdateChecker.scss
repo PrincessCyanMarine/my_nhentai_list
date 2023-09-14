@@ -1,0 +1,28 @@
+.new-mnl-update-available {
+  background-color: #7b2222;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 1.3em;
+  font-weight: 600;
+  position: fixed;
+  top: 10px;
+  transform: translateX(-50%);
+  left: 50%;
+  z-index: 999;
+  .mnl-update-versions,
+  .mnl-update-buttons {
+    a {
+      color: #fff;
+      cursor: pointer;
+      text-decoration: none;
+      &:hover {
+        color: #aaa;
+        text-decoration: underline;
+      }
+    }
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+}

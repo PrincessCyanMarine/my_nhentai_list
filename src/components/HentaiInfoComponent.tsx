@@ -4,21 +4,35 @@ import { getImageURL } from "../helpers/HentaiInfoHelper";
 import { HentaiInfo, Tag } from "../models/HentaiInfo";
 import styles from "../sass/HentainInfo.module.scss";
 import Fuse from "fuse.js";
+import { MdOutlineExpandLess, MdOutlineExpandMore } from "react-icons/md";
+import ButtonLink from "./ButtonLink";
+import TagComponent from "./TagComponent";
+import TagPresenter from "./TagPresenter";
 
 export default ({
   info,
   rating,
   id,
   match,
+  select,
+  selected,
 }: {
   id: number | string;
   info?: HentaiInfo;
   rating?: number;
   match?: Fuse.FuseResult<HentaiInfo>;
+  select: (id: number | string) => void;
+  selected: boolean;
 }) => {
   const [groups, setGroups] = useState<Tag[]>([]);
   const [artists, setArtists] = useState<Tag[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+
+  const [extraInfoShown, setExtraInfoShown] = useState(false);
+
+  // useEffect(() => {
+  //   console.log(extraInfoShown);
+  // }, [extraInfoShown]);
 
   useEffect(() => {
     if (info) {
@@ -29,41 +43,6 @@ export default ({
       );
     }
   }, [info]);
-
-  const Tag = ({ tag }: { tag: Tag }) => {
-    return (
-      <a
-        key={tag.id}
-        className={styles.tag}
-        onClick={(ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          chrome.tabs.create({
-            url: `https://nhentai.net/${tag.type}/${tag.name.replace(
-              /\s/,
-              "-"
-            )}`,
-          });
-        }}
-      >
-        <span
-          dangerouslySetInnerHTML={{
-            __html: textHighlighter(tag.name, "tags.name"),
-          }}
-        ></span>
-      </a>
-    );
-  };
-
-  const TagPresenter = ({ tags }: { tags?: Tag[] }) => {
-    return (
-      <div className={styles.tag_presenter}>
-        {tags?.map((tag) => (
-          <Tag tag={tag} key={tag.id} />
-        ))}
-      </div>
-    );
-  };
 
   function textHighlighter(text: string, key: string) {
     const matches = match?.matches?.filter((m) => m.key == key);
@@ -84,37 +63,83 @@ export default ({
     return result;
   }
 
+  function tagHighlighter(tag?: Tag) {
+    return <>{tag?.name || "NO NAME FOUND"}</>;
+  }
+
   return (
     <div
-      className={styles.item}
+      className={`${styles.item}${
+        extraInfoShown ? ` ${styles.extraInfoShown}` : ""
+      }${selected ? ` ${styles.selected}` : ""}`}
       onClick={() => {
-        chrome.tabs.create({ url: `https://nhentai.net/g/${id}` });
+        // chrome.tabs.create({ url: `https://nhentai.net/g/${id}` });
       }}
     >
-      <div className={styles.image}>
+      <div className={`${styles.image}`}>
         <FallbackImage
+          onClick={() => {
+            select(id);
+          }}
           src={getImageURL(info, info?.images?.cover)}
           alt="cover"
           fallbackSrc={chrome.runtime.getURL("assets/unavailable.png")}
         />
       </div>
 
-      {rating ? (
-        <p
-          className={`${styles.rating} ${
-            rating >= 6
-              ? styles.good
-              : rating >= 4
-              ? styles.average
-              : styles.bad
-          }`}
-        >
-          &#9733; {rating.toFixed(2)}
-        </p>
-      ) : (
-        <p className={styles.rating}>NOT RATED</p>
-      )}
-      <p className={styles.id}>
+      <span
+        onClick={() => {
+          let newRating = prompt("Type new rating", rating?.toString() || "0");
+          if (newRating) {
+            console.log(newRating);
+            chrome.storage.sync.get("list", (data) => {
+              let _list = data["list"] || {};
+              _list[id] = parseFloat(newRating!);
+              chrome.storage.sync.set({ list: _list });
+            });
+          }
+        }}
+      >
+        {rating ? (
+          <p
+            className={`${styles.rating} ${
+              rating >= 6
+                ? styles.good
+                : rating >= 4
+                ? styles.average
+                : styles.bad
+            }`}
+          >
+            &#9733; {rating.toFixed(2)}
+          </p>
+        ) : (
+          <p className={styles.rating}>NOT RATED</p>
+        )}
+      </span>
+      <div className={styles.readDate}>
+        <span>
+          {info?.first_read
+            ? new Date(info.first_read).toLocaleDateString() +
+              " " +
+              new Date(info.first_read).toLocaleTimeString()
+            : "NO DATE INFORMATION"}
+        </span>
+        <span>
+          {info?.last_read
+            ? new Date(info.last_read).toLocaleDateString() +
+              " " +
+              new Date(info.last_read).toLocaleTimeString()
+            : "NO DATE INFORMATION"}
+        </span>
+      </div>
+      <p
+        className={styles.id}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          select(id);
+        }}
+      >
         <span
           dangerouslySetInnerHTML={{
             __html: textHighlighter(id.toString(), "id"),
@@ -132,6 +157,11 @@ export default ({
       ) : (
         <p className={styles.title}>NO TITLE INFORMATION</p>
       )}
+      <div className={styles.read}>
+        <ButtonLink href={`https://nhentai.net/g/${id}`} target="_blank">
+          READ
+        </ButtonLink>
+      </div>
       {info?.num_pages ? (
         <p className={styles.pages}>
           {info.num_pages} {info.num_pages > 1 ? "pages" : "page"}
@@ -141,59 +171,110 @@ export default ({
       )}
       {info?.tags?.find((tag) => tag.type == "language") && (
         <p className={styles.language}>
-          <Tag tag={info!.tags!.find((tag) => tag.type == "language")!} />
-        </p>
-      )}
-      {artists.length > 0 && (
-        <div className={styles.artist}>
-          <h3>Artists:</h3>
-          <TagPresenter
-            tags={info?.tags.filter((tag) => tag.type == "artist")}
-          />
-        </div>
-      )}
-      {groups.length > 0 && (
-        <div className={styles.group}>
-          <h3>Groups:</h3>
-          <TagPresenter tags={groups} />
-        </div>
-      )}
-      {tags.length > 0 && (
-        <div className={styles.tags}>
-          <h3>Tags:</h3>
-          <TagPresenter
-            tags={info?.tags.filter(
-              (tag) => !["artist", "group", "language"].includes(tag.type)
+          <TagComponent
+            textHighlighter={tagHighlighter}
+            className={styles.tag}
+            tag={info!.tags!.find(
+              (tag) => tag.type == "language" && tag.name != "translated"
             )}
           />
-        </div>
+        </p>
       )}
 
-      <button
-        className={styles.remove}
-        onClick={(ev) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-          if (
-            confirm(
-              "Are you sure you want to delete this hentai's information?"
-            )
-          ) {
-            chrome.storage.local.get("info", (data) => {
-              let _info = data["info"] || {};
-              delete _info[id];
-              chrome.storage.local.set({ info: _info });
-            });
-            chrome.storage.sync.get("list", (data) => {
-              let _list = data["list"] || {};
-              delete _list[id];
-              chrome.storage.sync.set({ list: _list });
-            });
-          }
-        }}
-      >
-        DELETE
-      </button>
+      {extraInfoShown ? (
+        <div className={styles.extraInfo}>
+          {artists.length > 0 && (
+            <div className={styles.artist}>
+              <h3>Artists:</h3>
+              <TagPresenter
+                textHighlighter={tagHighlighter}
+                tagClassName={styles.tag}
+                presenterClassName={styles.tag_presenter}
+                tags={info?.tags.filter((tag) => tag.type == "artist")}
+              />
+            </div>
+          )}
+          {groups.length > 0 && (
+            <div className={styles.groups}>
+              <h3>Groups:</h3>
+              <TagPresenter
+                textHighlighter={tagHighlighter}
+                tagClassName={styles.tag}
+                presenterClassName={styles.tag_presenter}
+                tags={groups}
+              />
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div className={styles.tags}>
+              <h3>Tags:</h3>
+              <TagPresenter
+                textHighlighter={tagHighlighter}
+                tagClassName={styles.tag}
+                presenterClassName={styles.tag_presenter}
+                tags={info?.tags.filter(
+                  (tag) => !["artist", "group", "language"].includes(tag.type)
+                )}
+              />
+            </div>
+          )}
+          <p
+            className={styles.remove}
+            style={{
+              animationDelay: `${
+                0.1 * Math.ceil((tags.length + 1) / 2) + 0.1
+              }s`,
+            }}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              if (
+                confirm(
+                  "Are you sure you want to delete this hentai's information?"
+                )
+              ) {
+                chrome.storage.local.get("info", (data) => {
+                  let _info = data["info"] || {};
+                  delete _info[id];
+                  chrome.storage.local.set({ info: _info });
+                });
+                chrome.storage.sync.get("list", (data) => {
+                  let _list = data["list"] || {};
+                  delete _list[id];
+                  chrome.storage.sync.set({ list: _list });
+                });
+              }
+            }}
+          >
+            DELETE
+          </p>
+          <div
+            onClick={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              setExtraInfoShown(false);
+            }}
+            className={styles.showLess}
+          >
+            <a>
+              <MdOutlineExpandLess />
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={(ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            setExtraInfoShown(true);
+          }}
+          className={styles.showMore}
+        >
+          <a>
+            <MdOutlineExpandMore />
+          </a>
+        </div>
+      )}
     </div>
   );
 };

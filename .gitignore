@@ -3,3 +3,8 @@ node_modules
 *pem
 dist
 package-lock.json
+bundle-report.html
+my-nhentai-list-*.json
+output.json
+index.json
+*.crx

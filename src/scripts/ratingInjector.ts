@@ -1,5 +1,7 @@
 import "../sass/injector.scss";
-import { HentaiInfo } from "../models/HentaiInfo";
+import { HentaiInfo, Tag } from "../models/HentaiInfo";
+import { ElementBuilder } from "../helpers/ElementBuilder";
+import compareVersions from "../components/updateChecker";
 
 function getId() {
   let id: number;
@@ -27,6 +29,7 @@ function inject() {
     return;
   }
   // console.log(id);
+  compareVersions();
 
   chrome.storage.sync.get("list", (data) => {
     if (!data) data = {};
@@ -119,40 +122,58 @@ function inject() {
   //   });
 }
 
-inject();
+if (!/\/g\/[0-9]+\/[0-9]+/.test(window.location.pathname)) {
+  inject();
 
-let observer = new MutationObserver((mutations) => {
-  for (let mutation of mutations) {
-    if (mutation.addedNodes.length == 0) continue;
-    for (let i = 0; i < mutation.addedNodes.length; i++) {
-      let node = mutation.addedNodes[i];
-      if (
-        node instanceof HTMLAnchorElement &&
-        node.className == "my-nhentai-list-information-injection"
-      ) {
-        chrome.storage.local.get("info", (data) => {
-          if (!data || !data["info"]) data = { info: {} };
-          let arrivingData = JSON.parse(
-            JSON.parse((node as HTMLAnchorElement).innerText)
-          ) as HentaiInfo;
-          // console.log("testing arriving data");
-          if (!arrivingData) return;
-          // console.log("received arriving data");
-          let id = arrivingData.id;
-          // console.log("testing id");
-          if (!id) return;
-          // console.log("id exists");
-          data["info"][id] = arrivingData;
-          // console.log("data", data);
-          chrome.storage.local.set(data, function () {
-            // console.log("saved info");
-            (node as HTMLAnchorElement).remove();
+  let observer = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.addedNodes.length == 0) continue;
+      for (let i = 0; i < mutation.addedNodes.length; i++) {
+        let node = mutation.addedNodes[i];
+        if (
+          node instanceof HTMLAnchorElement &&
+          node.className == "my-nhentai-list-information-injection"
+        ) {
+          chrome.storage.local.get("info", (data) => {
+            if (!data || !data["info"]) data = { info: {} };
+            let arrivingData = JSON.parse(
+              JSON.parse((node as HTMLAnchorElement).innerText)
+            ) as HentaiInfo;
+            // console.log("testing arriving data");
+            if (!arrivingData) return;
+            // console.log("received arriving data");
+            let id = arrivingData.id;
+            // console.log("testing id");
+            if (!id) return;
+            // console.log("id exists");
+            let timeNow = Date.now().valueOf();
+            let tags: Record<number, Tag> = {};
+            for (let tag of arrivingData.tags) tags[tag.id] = tag;
+            arrivingData.tags = arrivingData.tags.map((t) => t.id) as any;
+            if (!data["info"][id]) data["info"][id] = arrivingData;
+            if (!data["info"][id]?.first_read)
+              data["info"][id].first_read = timeNow;
+            data["info"][id].last_read = timeNow;
+            // console.log("data", data);
+            chrome.storage.local.set(data, function () {
+              console.log("saved info");
+              (node as HTMLAnchorElement).remove();
+            });
+            chrome.storage.sync.get("tags", (data) => {
+              if (!data || !data["tags"]) data = { tags: {} };
+              for (let id in tags)
+                if (!data["tags"][id]) data["tags"][id] = tags[id];
+
+              chrome.storage.sync.set(data, function () {
+                console.log("saved tags");
+              });
+            });
           });
-        });
+        }
       }
     }
-  }
-});
-observer.observe(document.body, {
-  childList: true,
-});
+  });
+  observer.observe(document.body, {
+    childList: true,
+  });
+}
