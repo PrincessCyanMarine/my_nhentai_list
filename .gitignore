@@ -3,7 +3,7 @@ node_modules
 *pem
 dist
 package-lock.json
-pnpm-lock.json
+pnpm-lock.yaml
 bundle-report.html
 my-nhentai-list-*.json
 output.json
