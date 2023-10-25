@@ -25,7 +25,7 @@ export default ({
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
   ) => void;
   selected?: number[];
-  selectedClassName?: string;
+  selectedClassName?: string | ((tag: Tag) => string);
 }) => {
   return (
     <div className={presenterClassName}>
@@ -37,7 +37,13 @@ export default ({
               textHighlighter ?? (() => <>{tag?.name || "NO NAME FOUND"}</>)
             }
             className={`${tagClassName}${
-              selected?.includes(tag.id) ? ` ${selectedClassName}` : ""
+              selected?.includes(tag.id) && selectedClassName
+                ? ` ${
+                    typeof selectedClassName == "string"
+                      ? selectedClassName
+                      : selectedClassName(tag)
+                  }`
+                : ""
             }`}
             tag={tag}
             key={tag.id}

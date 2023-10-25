@@ -16,6 +16,7 @@ export default ({
   function Direction({ value, text }: { value: boolean; text: string }) {
     return (
       <div
+        className="button"
         style={{
           fontWeight: isSortingFunctionReverse == value ? "bold" : "normal",
           cursor: "pointer",

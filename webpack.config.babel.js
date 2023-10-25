@@ -1,5 +1,5 @@
 import path from "path";
-import { copyFile } from "fs/promises";
+import { cp } from "fs/promises";
 import {
   readdirSync,
   lstatSync,
@@ -9,6 +9,7 @@ import {
   writeFile,
   writeFileSync,
   rmSync,
+  readFileSync,
 } from "fs";
 import { ProvidePlugin } from "webpack";
 import WatchExternalFilesPlugin from "webpack-watch-files-plugin";
@@ -16,6 +17,7 @@ import TerserPlugin from "terser-webpack-plugin";
 import HtmlMinimizerPlugin from "html-minimizer-webpack-plugin";
 import CopyPlugin from "copy-webpack-plugin";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import WebpackRequireFrom from "webpack-require-from";
 
 class MyFileCopier {
   constructor(options) {
@@ -51,11 +53,19 @@ class MyFileCopier {
               if (!existsSync(toPath)) mkdirSync(toPath, { recursive: true });
               for (let file of readdirSync(fromPath))
                 _copy(`${fromPath}/${file}`, `${toPath}/${file}`);
-            } else if (from.endsWith(".json") && this.shouldMinifyJson)
+            } else if (from.match(/manifest.js/))
               copies.push(
                 new Promise((resolve) => {
                   let content = require(fromPath);
-                  let json = JSON.stringify(content);
+                  console.log("\n\n\n\n\n----------------------------------");
+                  console.log("JS to JSON");
+                  console.log("fromPath", fromPath);
+                  console.log("content", content);
+                  console.log("----------------------------------\n\n\n\n\n");
+
+                  let json;
+                  if (this.shouldMinifyJson) json = JSON.stringify(content);
+                  else json = JSON.stringify(content, null, 2);
                   mkdirSync(path.dirname(toPath), { recursive: true });
                   writeFileSync(toPath, json, { encoding: "utf8" });
 
@@ -67,7 +77,7 @@ class MyFileCopier {
                   resolve();
                 })
               );
-            else copies.push(copyFile(fromPath, toPath));
+            else copies.push(cp(fromPath, toPath, { recursive: true }));
           };
 
           if (Array.isArray(this.options))
@@ -99,6 +109,10 @@ function getDirEntries(path) {
 }
 
 var config = {
+  externals: {
+    react: "React", // Case matters here
+    "react-dom": "ReactDOM", // Case matters here
+  },
   entry: () => Object.fromEntries(getDirEntries("./src/scripts")),
   module: {
     rules: [
@@ -124,6 +138,9 @@ var config = {
     assetModuleFilename: "[name][ext]",
   },
   plugins: [
+    // new WebpackRequireFrom({
+    //   path: "chrome-extension://afgbncbjcffbhpemdhocimfjcbblieaf/scripts/",
+    // }),
     new WatchExternalFilesPlugin({
       files: ["./src/**/*"],
     }),
@@ -136,12 +153,33 @@ var config = {
       ],
     }),
   ],
+  optimization: {
+    splitChunks: {
+      // chunks: "all",
+      // minSize: 0,
+      // minSizeReduction: 1,
+      // name: (module, chunks, cacheGroupKey) => {
+      //   const allChunksNames = chunks
+      //     .map((chunk) => {
+      //       let _regClean = (str) => {
+      //         let res = str[0].toLowerCase();
+      //         for (let i = 1; i < str.length; i++)
+      //           if (/[A-Z]/.test(str[i])) res += str[i].toLowerCase();
+      //         return res;
+      //       };
+      //       return _regClean(chunk.name);
+      //     })
+      //     .join(".");
+      //   return `../chunks/${allChunksNames}`;
+      // },
+    },
+  },
 };
 
 module.exports = (env, argv) => {
   let copier = new MyFileCopier([
     {
-      from: "src/manifest.json",
+      from: "src/manifest.js",
       to: "dist/manifest.json",
     },
     // {
@@ -152,6 +190,8 @@ module.exports = (env, argv) => {
       from: "src/assets",
       to: "dist/assets",
     },
+    { from: "src/lib/react-dom.js", to: "dist/scripts/react-dom.js" },
+    { from: "src/lib/react.js", to: "dist/scripts/react.js" },
   ]);
 
   if (argv.mode === "development")

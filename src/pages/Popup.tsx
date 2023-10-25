@@ -2,6 +2,14 @@ import React, { useEffect, useState } from "react";
 import Main from "./Main";
 import "../sass/popup.scss";
 import TagSearcher from "./TagSearcher";
+import { InfoContextComponent } from "../context/infoContext";
+import { RatingsContextComponent } from "../context/ratingsContext";
+import { TagsContextComponent } from "../context/tagsContext";
+import {
+  SortingContext,
+  SortingContextComponent,
+} from "../context/sortingContext";
+import ConfigPage from "./ConfigPage";
 
 let event = new EventTarget();
 
@@ -20,6 +28,7 @@ export const Routing = {
 const routes = {
   "/": <Main />,
   "/tags": <TagSearcher />,
+  "/config": <ConfigPage />,
 } as const;
 
 export default () => {
@@ -40,5 +49,14 @@ export default () => {
     event.addEventListener("changeRoute", listener as any);
     setLoaded(true);
   }, []);
-  return routes[route];
+
+  return (
+    <TagsContextComponent>
+      <RatingsContextComponent>
+        <InfoContextComponent>
+          <SortingContextComponent>{routes[route]}</SortingContextComponent>
+        </InfoContextComponent>
+      </RatingsContextComponent>
+    </TagsContextComponent>
+  );
 };

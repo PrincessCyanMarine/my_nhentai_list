@@ -1,7 +1,7 @@
-export interface GalleryHentaiInfo extends HentaiInfo {
+export type GalleryHentaiInfo = HentaiInfo & {
   images: GalleryImages;
   tags: GalleryTag[];
-}
+};
 
 export interface GalleryImages {
   cover: GalleryImage;
@@ -27,7 +27,7 @@ export interface HentaiInfo {
   num_favorites: number;
   num_pages: number;
   scanlator: string;
-  tags: Tag[];
+  tags: number[];
   title: Title;
   upload_date: null;
   images: Images;

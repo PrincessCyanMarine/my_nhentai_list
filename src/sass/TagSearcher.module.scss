@@ -5,16 +5,22 @@
   text-align: center;
 }
 .tag {
-  cursor: pointer;
+  // cursor: pointer;
+  cursor: default;
   border-radius: 1em;
   padding: 8px;
   background-color: #1d1d27;
   @extend .center;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   &:hover {
-    color: #a9a9c5;
+    transition: none;
+    color: #ffffff;
     background-color: #3e3e43;
   }
   position: relative;
+  * {
+    pointer-events: none;
+  }
 }
 
 .tag_presenter {
@@ -25,6 +31,15 @@
   grid-auto-rows: 1fr;
   gap: 8px;
   margin: 0 8px;
+}
+.filtered_tag_presenter {
+  @extend .tag_presenter;
+  display: flex;
+  flex-wrap: wrap;
+  color: grey;
+  & .highlight {
+    color: white;
+  }
 }
 
 .sorting_presenter {
@@ -51,6 +66,13 @@
   }
 }
 
+.excluded {
+  background-color: #7b6469;
+  &:hover {
+    background-color: #4d3b40;
+  }
+}
+
 .searchBar {
   display: flex;
   flex-direction: column;
@@ -61,10 +83,14 @@
   input {
     padding: 16px;
     text-align: center;
+    pointer-events: none;
   }
   button {
     width: 100%;
     padding: 16px;
+    &:hover {
+      background-color: #3b3b4d;
+    }
   }
 }
 .decoration {
@@ -80,16 +106,26 @@
   top: -0.5em;
 }
 .contextMenu {
-  background-color: #525255;
+  background-color: #292a2d;
   color: #d2d2d2;
   display: flex;
   flex-direction: column;
-
+  width: 200px;
+  padding: 4px;
+  border-radius: 8px;
+  gap: 4px;
   * {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    height: 32px;
     padding: 8px;
     cursor: pointer;
+    border-radius: 8px;
     &:hover {
-      background-color: #7d7d8b;
+      background-color: #3f4042;
       color: #ffffff;
     }
   }

@@ -1,9 +1,10 @@
-const React = require("react");
-const ReactDOM = require("react-dom/client");
-const Popup = require("../pages/Popup").default;
+import React from "react";
+import ReactDOM from "react-dom";
+import Popup from "../pages/Popup";
 
-require("../lib/live");
+if (process.env.NODE_ENV === "development") require("../lib/live");
 
+// @ts-ignore
 const root = ReactDOM.createRoot(document.getElementById("react-app"));
 const render = () => {
   // console.log("Rendering React");

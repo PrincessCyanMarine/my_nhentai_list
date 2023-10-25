@@ -49,19 +49,19 @@ export default function compareVersions(autoAdd = true) {
         let res = new ElementBuilder("div")
           .addClass("new-mnl-update-available")
           .appendChildren(
-            new ElementBuilder("p").addText("New version available").build(),
+            new ElementBuilder("p").setText("New version available").build(),
             new ElementBuilder("div")
               .addClass("mnl-update-versions")
               .appendChildren(
-                new ElementBuilder("span").addText(`Current: ${local}`).build(),
-                new ElementBuilder("span").addText(`Latest: ${remote}`).build()
+                new ElementBuilder("span").setText(`Current: ${local}`).build(),
+                new ElementBuilder("span").setText(`Latest: ${remote}`).build()
               )
               .build(),
             new ElementBuilder("div")
               .addClass("mnl-update-buttons")
               .appendChildren(
                 new ElementBuilder("a")
-                  .addHtml("<p>Download</p>")
+                  .setHtml("<p>Download</p>")
                   .setAttribute(
                     "href",
                     "https://github.com/PrincessCyanMarine/my_nhentai_list/releases/latest"
@@ -70,12 +70,12 @@ export default function compareVersions(autoAdd = true) {
                   .build(),
                 new ElementBuilder("a")
 
-                  .addHtml("<p>Close</p>")
+                  .setHtml("<p>Close</p>")
                   .addEventListener("click", _close)
                   .build(),
                 new ElementBuilder("a")
 
-                  .addHtml("<p>Ignore update</p>")
+                  .setHtml("<p>Ignore update</p>")
                   .addEventListener("click", _ignore)
                   .build()
               )

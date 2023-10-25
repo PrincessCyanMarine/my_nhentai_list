@@ -87,7 +87,7 @@ function filterGallery(gallery?: GalleryHentaiInfo) {
     title,
     upload_date,
     images: _images,
-  } as HentaiInfo;
+  } as HentaiInfo & { tags: Tag[] };
   //   if (includeImages) res.images = _images;
   return res;
 }

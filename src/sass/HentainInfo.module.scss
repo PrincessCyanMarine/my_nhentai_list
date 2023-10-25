@@ -153,7 +153,7 @@
 }
 
 .highlight {
-  color: #ff0000;
+  color: #fff;
 }
 
 .show {
@@ -240,4 +240,12 @@
   grid-area: read_date;
   display: flex;
   flex-direction: column;
+}
+
+.censored {
+  filter: blur(10px) grayscale(1);
+}
+
+.notHighlighted {
+  color: #808080;
 }

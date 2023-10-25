@@ -20,3 +20,11 @@ chrome.runtime.onInstalled.addListener(function () {
     id: "openOnNhentai",
   });
 });
+
+chrome.runtime.onMessage.addListener((msg, sender, send) => {
+  if (msg.type === "openTab") {
+    chrome.tabs.create({
+      url: msg.url,
+    });
+  }
+});

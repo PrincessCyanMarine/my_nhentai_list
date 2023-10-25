@@ -22,12 +22,13 @@ export class ElementBuilder<K extends keyof HTMLElementTagNameMap> {
     return this;
   }
 
-  addText(text: string) {
+  setText(text: string | (() => string)) {
+    if (typeof text === "function") text = text();
     this.element.innerText = text;
     return this;
   }
 
-  addHtml(html: string) {
+  setHtml(html: string) {
     this.element.innerHTML = html;
     return this;
   }
@@ -40,8 +41,14 @@ export class ElementBuilder<K extends keyof HTMLElementTagNameMap> {
     return this;
   }
 
-  appendChildren(...children: HTMLElement[]) {
-    for (let child of children) this.element.appendChild(child);
+  appendChildren(...children: (HTMLElement | Node)[]): ElementBuilder<K>;
+  appendChildren(children: (HTMLElement | Node)[]): ElementBuilder<K>;
+  appendChildren(
+    first: (HTMLElement | Node)[] | (HTMLElement | Node),
+    ...rest: (HTMLElement | Node)[]
+  ): ElementBuilder<K> {
+    if (!Array.isArray(first)) first = [first];
+    for (let child of [...first, ...rest]) this.element.appendChild(child);
     return this;
   }
 

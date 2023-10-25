@@ -8,16 +8,15 @@ type Props = RegularProps & {
 };
 
 export default (props: Props) => {
-  let regularProps: RegularProps & { fallbackSrc?: string } = { ...props };
-  delete regularProps.fallbackSrc;
+  let { fallbackSrc } = props;
   return props.src?.trim() ? (
     <img
-      {...regularProps}
+      {...props}
       onError={(ev) => {
-        ev.currentTarget.src = props.fallbackSrc;
+        ev.currentTarget.src = fallbackSrc || ev.currentTarget.src;
       }}
     />
   ) : (
-    <img {...regularProps} src={props.fallbackSrc} />
+    <img {...props} src={fallbackSrc} />
   );
 };

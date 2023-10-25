@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import FallbackImage from "./FallbackImage";
 import { getImageURL } from "../helpers/HentaiInfoHelper";
 import { HentaiInfo, Tag } from "../models/HentaiInfo";
@@ -8,6 +8,7 @@ import { MdOutlineExpandLess, MdOutlineExpandMore } from "react-icons/md";
 import ButtonLink from "./ButtonLink";
 import TagComponent from "./TagComponent";
 import TagPresenter from "./TagPresenter";
+import { MyNHentaiListConfiguration } from "../pages/ConfigPage";
 
 export default ({
   info,
@@ -16,6 +17,9 @@ export default ({
   match,
   select,
   selected,
+  allTags,
+  setRef,
+  CONFIG,
 }: {
   id: number | string;
   info?: HentaiInfo;
@@ -23,12 +27,29 @@ export default ({
   match?: Fuse.FuseResult<HentaiInfo>;
   select: (id: number | string) => void;
   selected: boolean;
+  allTags: Record<number, Tag>;
+  setRef?: React.Dispatch<
+    React.SetStateAction<React.RefObject<HTMLDivElement | null> | null>
+  >;
+  CONFIG: Partial<MyNHentaiListConfiguration>;
 }) => {
   const [groups, setGroups] = useState<Tag[]>([]);
   const [artists, setArtists] = useState<Tag[]>([]);
+  const [languages, setLanguages] = useState<Tag[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
 
   const [extraInfoShown, setExtraInfoShown] = useState(false);
+
+  // const [_tags, _setTags] = useState<Tag[]>([]);
+
+  // useEffect(() => {
+  //   let __tags: Tag[] = [];
+  //   for (let t of info?.tags || []) {
+  //     let _tag = allTags[t];
+  //     if (_tag) __tags.push(_tag);
+  //   }
+  //   _setTags(__tags);
+  // }, [info, allTags]);
 
   // useEffect(() => {
   //   console.log(extraInfoShown);
@@ -36,13 +57,23 @@ export default ({
 
   useEffect(() => {
     if (info) {
-      setGroups(info?.tags.filter((tag) => tag.type == "group"));
-      setArtists(info?.tags.filter((tag) => tag.type == "artist"));
+      // console.log(info.tags);
+      let _tags: Tag[] = [];
+      for (let t of info?.tags || []) {
+        let _tag = allTags[t];
+        if (_tag) _tags.push(_tag);
+      }
+      // console.log(_tags);
+      setGroups(_tags.filter((tag) => tag.type == "group"));
+      setArtists(_tags.filter((tag) => tag.type == "artist"));
+      setLanguages(_tags.filter((tag) => tag.type == "language"));
       setTags(
-        info?.tags.filter((tag) => !["artist", "group"].includes(tag.type))
+        _tags.filter(
+          (tag) => !["artist", "group", "language"].includes(tag.type)
+        )
       );
     }
-  }, [info]);
+  }, [info, allTags]);
 
   function textHighlighter(text: string, key: string) {
     const matches = match?.matches?.filter((m) => m.key == key);
@@ -63,12 +94,40 @@ export default ({
     return result;
   }
 
-  function tagHighlighter(tag?: Tag) {
-    return <>{tag?.name || "NO NAME FOUND"}</>;
+  function tagHighlighter(tag?: Tag): JSX.Element {
+    let text = tag?.name || "NO NAME FOUND";
+    const matches = match?.matches;
+    if (!matches || matches.length == 0) return <>{text}</>;
+    let result = "";
+    let last = 0;
+    for (const match of matches) {
+      if (match.value != text) continue;
+      for (const index of match.indices) {
+        result += text.slice(last, index[0]);
+        result += `<span class="${styles.highlight}">`;
+        result += text.slice(index[0], index[1] + 1);
+        result += "</span>";
+        last = index[1] + 1;
+      }
+    }
+    result += text.slice(last);
+    return <span dangerouslySetInnerHTML={{ __html: result }} />;
   }
+
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (setRef) setRef(ref);
+  }, [ref]);
 
   return (
     <div
+      // style={
+      //   setRef && {
+      //     border: "5px solid #ff0000",
+      //   }
+      // }
+      ref={ref}
       className={`${styles.item}${
         extraInfoShown ? ` ${styles.extraInfoShown}` : ""
       }${selected ? ` ${styles.selected}` : ""}`}
@@ -82,6 +141,7 @@ export default ({
             select(id);
           }}
           src={getImageURL(info, info?.images?.cover)}
+          className={CONFIG.censorImages ? styles.censored : ""}
           alt="cover"
           fallbackSrc={chrome.runtime.getURL("assets/unavailable.png")}
         />
@@ -91,16 +151,17 @@ export default ({
         onClick={() => {
           let newRating = prompt("Type new rating", rating?.toString() || "0");
           if (newRating) {
-            console.log(newRating);
-            chrome.storage.sync.get("list", (data) => {
+            // console.log(newRating);
+            chrome.storage.local.get("list", (data) => {
               let _list = data["list"] || {};
-              _list[id] = parseFloat(newRating!);
-              chrome.storage.sync.set({ list: _list });
+              _list[id] = Math.min(Math.max(parseFloat(newRating!), -1), 10);
+              if (_list[id] < 0) delete _list[id];
+              chrome.storage.local.set({ list: _list });
             });
           }
         }}
       >
-        {rating ? (
+        {(rating && rating >= 0) || rating == 0 ? (
           <p
             className={`${styles.rating} ${
               rating >= 6
@@ -169,12 +230,12 @@ export default ({
       ) : (
         <p className={styles.pages}>NO PAGE INFORMATION</p>
       )}
-      {info?.tags?.find((tag) => tag.type == "language") && (
+      {languages && (
         <p className={styles.language}>
           <TagComponent
             textHighlighter={tagHighlighter}
-            className={styles.tag}
-            tag={info!.tags!.find(
+            className={`${styles.tag} ${match ? styles.notHighlighted : ""}`}
+            tag={languages.find(
               (tag) => tag.type == "language" && tag.name != "translated"
             )}
           />
@@ -188,9 +249,11 @@ export default ({
               <h3>Artists:</h3>
               <TagPresenter
                 textHighlighter={tagHighlighter}
-                tagClassName={styles.tag}
+                tagClassName={`${styles.tag} ${
+                  match ? styles.notHighlighted : ""
+                }`}
                 presenterClassName={styles.tag_presenter}
-                tags={info?.tags.filter((tag) => tag.type == "artist")}
+                tags={artists}
               />
             </div>
           )}
@@ -199,7 +262,9 @@ export default ({
               <h3>Groups:</h3>
               <TagPresenter
                 textHighlighter={tagHighlighter}
-                tagClassName={styles.tag}
+                tagClassName={`${styles.tag} ${
+                  match ? styles.notHighlighted : ""
+                }`}
                 presenterClassName={styles.tag_presenter}
                 tags={groups}
               />
@@ -210,9 +275,11 @@ export default ({
               <h3>Tags:</h3>
               <TagPresenter
                 textHighlighter={tagHighlighter}
-                tagClassName={styles.tag}
+                tagClassName={`${styles.tag} ${
+                  match ? styles.notHighlighted : ""
+                }`}
                 presenterClassName={styles.tag_presenter}
-                tags={info?.tags.filter(
+                tags={tags.filter(
                   (tag) => !["artist", "group", "language"].includes(tag.type)
                 )}
               />
@@ -238,10 +305,10 @@ export default ({
                   delete _info[id];
                   chrome.storage.local.set({ info: _info });
                 });
-                chrome.storage.sync.get("list", (data) => {
+                chrome.storage.local.get("list", (data) => {
                   let _list = data["list"] || {};
                   delete _list[id];
-                  chrome.storage.sync.set({ list: _list });
+                  chrome.storage.local.set({ list: _list });
                 });
               }
             }}

@@ -2,6 +2,7 @@ import "../sass/injector.scss";
 import { HentaiInfo, Tag } from "../models/HentaiInfo";
 import { ElementBuilder } from "../helpers/ElementBuilder";
 import compareVersions from "../components/updateChecker";
+import { MyNHentaiListConfiguration } from "../pages/ConfigPage";
 
 function getId() {
   let id: number;
@@ -31,7 +32,7 @@ function inject() {
   // console.log(id);
   compareVersions();
 
-  chrome.storage.sync.get("list", (data) => {
+  chrome.storage.local.get("list", (data) => {
     if (!data) data = {};
     if (!data["list"]) data["list"] = {};
     let rating = data["list"][id] ?? -1;
@@ -57,7 +58,7 @@ function inject() {
 
     let save = (rating: number) => {
       data["list"][id] = rating;
-      chrome.storage.sync.set(data, function () {
+      chrome.storage.local.set(data, function () {
         // console.log("saved");
       });
     };
@@ -101,14 +102,7 @@ function inject() {
     info?.appendChild(label);
   });
 
-  chrome.storage.sync.get("info", (data) => {
-    // console.log(data);
-    if (!data || !data["info"]) return;
-    let info: HentaiInfo | undefined = data["info"][id];
-    if (info) return;
-  });
-
-  //   chrome.storage.sync.get("list/", function (data) {
+  //   chrome.storage.local.get("list/", function (data) {
   //     let sites = data.sites;
   //     if (!sites) return;
   //     let url = window.location.href;
@@ -138,7 +132,7 @@ if (!/\/g\/[0-9]+\/[0-9]+/.test(window.location.pathname)) {
             if (!data || !data["info"]) data = { info: {} };
             let arrivingData = JSON.parse(
               JSON.parse((node as HTMLAnchorElement).innerText)
-            ) as HentaiInfo;
+            ) as HentaiInfo & { tags: Tag[] };
             // console.log("testing arriving data");
             if (!arrivingData) return;
             // console.log("received arriving data");
@@ -148,24 +142,26 @@ if (!/\/g\/[0-9]+\/[0-9]+/.test(window.location.pathname)) {
             // console.log("id exists");
             let timeNow = Date.now().valueOf();
             let tags: Record<number, Tag> = {};
-            for (let tag of arrivingData.tags) tags[tag.id] = tag;
-            arrivingData.tags = arrivingData.tags.map((t) => t.id) as any;
+            for (let tag of arrivingData.tags as Tag[]) tags[tag.id] = tag;
+            arrivingData.tags = (arrivingData.tags as Tag[]).map(
+              (t) => t.id
+            ) as any;
             if (!data["info"][id]) data["info"][id] = arrivingData;
             if (!data["info"][id]?.first_read)
               data["info"][id].first_read = timeNow;
             data["info"][id].last_read = timeNow;
             // console.log("data", data);
             chrome.storage.local.set(data, function () {
-              console.log("saved info");
+              // console.log("saved info");
               (node as HTMLAnchorElement).remove();
             });
-            chrome.storage.sync.get("tags", (data) => {
+            chrome.storage.local.get("tags", (data) => {
               if (!data || !data["tags"]) data = { tags: {} };
               for (let id in tags)
                 if (!data["tags"][id]) data["tags"][id] = tags[id];
 
-              chrome.storage.sync.set(data, function () {
-                console.log("saved tags");
+              chrome.storage.local.set(data, function () {
+                // console.log("saved tags");
               });
             });
           });
