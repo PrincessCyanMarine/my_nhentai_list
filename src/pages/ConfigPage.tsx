@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React from "react";
 
 import { VscArrowLeft } from "react-icons/vsc";
 import { Routing } from "./Popup";
 import { useSyncedDefault } from "../hooks/useStorage";
+import Option from "../components/Option";
 
 export type MyNHentaiListConfiguration = Partial<{
   noFavoriteChips: boolean;
@@ -21,6 +22,7 @@ export type MyNHentaiListConfiguration = Partial<{
   dontChangeTagURLs: boolean;
   dontChangeTagURLsDefaults: boolean;
   dontChangeTagURLsSelected: boolean;
+  dontChangeTagURLsExcluded: boolean;
   dontRedirectSearchToAdvanced: boolean;
   noExcludeFromSearch: boolean;
   customSearchMode: SEARCH_MODE;
@@ -29,6 +31,16 @@ export type MyNHentaiListConfiguration = Partial<{
   showFullTagsListOnAutoComplete: boolean;
   enterToSearch: boolean;
   dontChangeTagURLsSorting: boolean;
+  noAutoSearchWrap: boolean;
+  noChipLinks: boolean;
+  showComments: boolean;
+
+  useReactGalleries: boolean;
+  dontUseReactGalleries: boolean;
+
+  galleryStyle: GALLERY_STYLE;
+
+  dontShowMoreOnGallery: boolean;
 }>;
 
 export enum SEARCH_MODE {
@@ -37,7 +49,12 @@ export enum SEARCH_MODE {
   MULTIPLE,
 }
 
-type KeysMatching<V> = {
+export enum GALLERY_STYLE {
+  DEFAULT,
+  LIST,
+}
+
+export type KeysMatching<V> = {
   [K in keyof MyNHentaiListConfiguration]-?: MyNHentaiListConfiguration[K] extends
     | undefined
     | V
@@ -55,33 +72,6 @@ export default () => {
       ...CONFIG,
       [key]: !(CONFIG[key] ?? false),
     });
-  }
-
-  function Option({
-    configKey: key,
-    text,
-    type,
-    inverted,
-  }: {
-    configKey: KeysMatching<boolean>;
-    text: string;
-    type: 0;
-    inverted?: boolean;
-  }) {
-    let state = !(CONFIG[key] ?? false);
-    if (inverted) state = !state;
-    return [
-      <label key={key}>
-        <p>
-          <input
-            onChange={(ev) => toggle(key)}
-            type="checkbox"
-            checked={state}
-          />{" "}
-          <a>{text}</a>
-        </p>
-      </label>,
-    ][type];
   }
 
   function Options({
@@ -136,6 +126,9 @@ export default () => {
         {options.map(([key, text, type, inverted]) => {
           return (
             <Option
+              toggle={toggle}
+              _setConfig={_setConfig}
+              CONFIG={CONFIG}
               configKey={key}
               text={text}
               type={type}
@@ -174,13 +167,46 @@ export default () => {
         <h2>Gallery</h2>
         <Options
           options={[
-            ["noFavoriteChips", "Favorite tags chips", 0],
-            ["noRegularTagChips", "Other tags chips", 0],
+            ["dontUseReactGalleries", "Use react galleries", 0],
             ["hideRatingOnGallery", "Show rating", 0],
             ["hideReadOnGallery", "Show read marker", 0],
+            ["noFavoriteChips", "Favorite tags chips", 0],
+            ["noRegularTagChips", "Other tags chips", 0],
+            ["noChipLinks", "Chip links", 0],
+            ["dontShowMoreOnGallery", "Show more on select", 0],
           ]}
         />
+
+        {!CONFIG["dontUseReactGalleries"] && (
+          <p>
+            Gallery style:{" "}
+            <button
+              // configKey="customSearchMode"
+              // type={1}
+              // text="Auto search on autocomplete select"
+              // inverted
+              onClick={() => {
+                _setConfig({
+                  ...CONFIG,
+                  galleryStyle:
+                    ((CONFIG["galleryStyle"] || GALLERY_STYLE.DEFAULT) + 1) % 2,
+                });
+              }}
+            >
+              {
+                {
+                  [GALLERY_STYLE.DEFAULT]: "Default",
+                  [GALLERY_STYLE.LIST]: "List",
+                }[CONFIG["galleryStyle"] ?? GALLERY_STYLE.DEFAULT]
+              }
+            </button>
+          </p>
+        )}
+
         <Option
+          _setConfig={_setConfig}
+          toggle={toggle}
+          CONFIG={CONFIG}
           configKey="censorImages"
           text="Censor images"
           type={0}
@@ -210,6 +236,9 @@ export default () => {
           ]}
         />
         <Option
+          _setConfig={_setConfig}
+          toggle={toggle}
+          CONFIG={CONFIG}
           configKey="ignoreCurrentlyExcludedInAddToSearch"
           type={0}
           text="Show tags to add to search even if they are set as excluded"
@@ -217,6 +246,9 @@ export default () => {
         />
         <h3>Autocomplete</h3>
         <Option
+          _setConfig={_setConfig}
+          toggle={toggle}
+          CONFIG={CONFIG}
           configKey="noCustomSearchBar"
           type={0}
           text="Add autocomplete to search bar"
@@ -224,6 +256,9 @@ export default () => {
         {!CONFIG["noCustomSearchBar"] && (
           <>
             <Option
+              _setConfig={_setConfig}
+              toggle={toggle}
+              CONFIG={CONFIG}
               configKey="noCustomAutoComplete"
               type={0}
               text="Use default autocomplete"
@@ -259,11 +294,26 @@ export default () => {
                 </p>
 
                 <Option
+                  _setConfig={_setConfig}
+                  toggle={toggle}
+                  CONFIG={CONFIG}
+                  configKey="noAutoSearchWrap"
+                  type={0}
+                  text="Auto search wraps"
+                />
+
+                <Option
+                  _setConfig={_setConfig}
+                  toggle={toggle}
+                  CONFIG={CONFIG}
                   configKey="showFullTagsListOnAutoComplete"
                   type={0}
                   text="Performance mode"
                 />
                 <Option
+                  _setConfig={_setConfig}
+                  toggle={toggle}
+                  CONFIG={CONFIG}
                   configKey="enterToSearch"
                   type={0}
                   text="Press enter to search"
@@ -284,6 +334,7 @@ export default () => {
               0,
             ],
             ["dontChangeTagURLs", "Change tag urls", 0],
+            ["showComments", "Hide comments", 0],
           ]}
         />
         {!CONFIG["dontChangeTagURLs"] && (
@@ -302,6 +353,11 @@ export default () => {
               [
                 "dontChangeTagURLsSorting",
                 "Change tag urls to include sorting",
+                0,
+              ],
+              [
+                "dontChangeTagURLsExcluded",
+                "Change tag urls to include excluded tags",
                 0,
               ],
             ]}

@@ -11,9 +11,12 @@ export default ({
   selected,
   selectedClassName,
   onContextMenu,
+  favorites,
+  favoriteClassName,
 }: {
   tags?: Tag[];
   tagClassName?: string;
+  favoriteClassName?: string;
   presenterClassName?: string;
   textHighlighter?: (tag?: Tag) => JSX.Element;
   onClick?: (
@@ -26,6 +29,7 @@ export default ({
   ) => void;
   selected?: number[];
   selectedClassName?: string | ((tag: Tag) => string);
+  favorites?: number[];
 }) => {
   return (
     <div className={presenterClassName}>
@@ -44,7 +48,7 @@ export default ({
                       : selectedClassName(tag)
                   }`
                 : ""
-            }`}
+            }${favorites?.includes(tag.id) ? ` ${favoriteClassName}` : ""}`}
             tag={tag}
             key={tag.id}
             animationDelay={_delay}

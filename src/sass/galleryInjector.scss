@@ -24,7 +24,7 @@
   padding: 0 8px;
   gap: 8px;
   display: flex;
-  pointer-events: none;
+  // pointer-events: none;
   position: absolute;
   bottom: 0.5em;
   font-weight: bold;
@@ -72,6 +72,26 @@
   align-items: center;
   justify-content: center;
   color: white;
+  &.reading {
+    background-color: #007200;
+    color: #00ff00;
+  }
+  &.rereading {
+    background-color: #2d561b;
+    color: #108900;
+  }
+  &.completed {
+    background-color: #211042;
+    color: #53a0f2;
+  }
+  &.on_hold {
+    background-color: #80690d;
+    color: #dfcf45;
+  }
+  &.dropped {
+    background-color: #720000;
+    color: #ff0000;
+  }
 }
 
 .read {
@@ -173,6 +193,9 @@
     &:hover {
       background-color: #292a2d;
     }
+    &.advanced-options:hover {
+      background-color: #3f4042;
+    }
     &.selected {
       background-color: #3f4042;
     }
@@ -185,6 +208,9 @@
   }
   .autocomplete-item-selected {
     background-color: #294a2d;
+    &:hover {
+      background-color: #294a2d;
+    }
     &.selected {
       background-color: #3f6042;
     }
@@ -204,4 +230,93 @@
   &::-webkit-scrollbar-thumb:hover {
     background: #444547;
   }
+}
+
+.advanced-search {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  *::-webkit-scrollbar-track {
+    background-color: #292a2d;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    transition: background-color 0.2s ease-in-out;
+    background-color: #3f4042;
+    border-radius: 8px;
+    &:hover {
+      background-color: #666265;
+    }
+    &:active {
+      background-color: #515356;
+    }
+  }
+  .background {
+    backdrop-filter: blur(8px);
+    background-color: rgba(0, 0, 0, 0.5);
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+  }
+  .foreground {
+    width: 80%;
+    height: 80%;
+    position: absolute;
+    background-color: #353736;
+    z-index: 9999;
+    border-radius: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    padding-top: 0;
+  }
+  .advanced-search-options-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    div {
+      padding: 8px;
+      border-radius: 8px;
+      background-color: #292a2d;
+      color: #fff;
+      cursor: pointer;
+      &:hover {
+        background-color: #3f4042;
+      }
+      &.selected {
+        background-color: #3f6042;
+        &.red {
+          background-color: #60423f;
+        }
+      }
+    }
+  }
+  .advanced-sorting {
+    cursor: pointer;
+    &:hover {
+      background-color: #3f4042;
+    }
+  }
+}
+.pages-inputs {
+  display: flex;
+  gap: 8px;
+  margin: 8px;
+  justify-content: center;
+}
+
+.no-scroll {
+  overflow: hidden !important;
 }

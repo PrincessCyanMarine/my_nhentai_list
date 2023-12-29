@@ -3,7 +3,7 @@ if (localStorage.getItem("censorImages") == "true") censor();
 function censor() {
   if (document.getElementById("censorStyle")) return;
   let customStyle = document.createElement("style");
-  customStyle.innerHTML = `#image-container > * > img { filter: grayscale(1) blur(100px) !important; opacity: 0.5 !important; } #cover > * > img { filter: grayscale(1) blur(20px) !important; } .cover > img { filter: grayscale(1) blur(8px) !important; } .gallerythumb > img{ filter: grayscale(1) blur(30px) !important; pointer-events: none !important; }`;
+  customStyle.innerHTML = `.censorable { filter: grayscale(1) blur(10px) !important; }; #image-container > * > img { filter: grayscale(1) blur(100px) !important; opacity: 0.5 !important; } #cover > * > img { filter: grayscale(1) blur(20px) !important; } .cover > img { filter: grayscale(1) blur(8px) !important; } .gallerythumb > img{ filter: grayscale(1) blur(30px) !important; pointer-events: none !important; }`;
   customStyle.id = "censorStyle";
   document.children[0].appendChild(customStyle);
 }

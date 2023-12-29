@@ -21,10 +21,25 @@ export interface GalleryTag extends Tag {
   created: boolean;
 }
 
+export const STATUS_NAME = (str: string | undefined) => {
+  if (!str) return "";
+  return (
+    {
+      reading: "READING",
+      completed: "COMPLETED",
+      on_hold: "ON HOLD",
+      dropped: "DROPPED",
+      plan_to_read: "PLAN TO READ",
+      rereading: "REREADING",
+    }[str] ?? ""
+  );
+};
+
 export interface HentaiInfo {
   id: number;
   media_id: string;
   num_favorites: number;
+  last_page?: number;
   num_pages: number;
   scanlator: string;
   tags: number[];
@@ -33,6 +48,14 @@ export interface HentaiInfo {
   images: Images;
   first_read?: number;
   last_read?: number;
+  status?:
+    | "reading"
+    | "completed"
+    | "on_hold"
+    | "dropped"
+    | "plan_to_read"
+    | "rereading";
+  times_read?: number;
 }
 
 export interface Images {

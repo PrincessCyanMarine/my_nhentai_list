@@ -91,3 +91,16 @@ function filterGallery(gallery?: GalleryHentaiInfo) {
   //   if (includeImages) res.images = _images;
   return res;
 }
+
+let updatePage = (page: number) =>
+  window.postMessage({ type: "PAGE_CHANGE", page }, "*");
+function insertOnReader() {
+  if (!window.reader) return;
+  updatePage(window.reader.current_page);
+  let _sp = window.reader.set_page.bind(window.reader);
+  window.reader.set_page = ((...args: any[]) => {
+    _sp(...args);
+    updatePage(args[0]);
+  }).bind(window.reader);
+}
+insertOnReader();

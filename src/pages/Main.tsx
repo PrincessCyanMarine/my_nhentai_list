@@ -19,6 +19,7 @@ import { TagsContext } from "../context/tagsContext";
 import { SortingContext } from "../context/sortingContext";
 import { MyNHentaiListConfiguration } from "./ConfigPage";
 import { useSyncedDefault } from "../hooks/useStorage";
+import StatusSelector from "../components/StatusSelector";
 
 const OBSERVER_SKIP = 10;
 
@@ -175,7 +176,7 @@ export default () => {
         {
           ...options,
           getFn: (obj) => {
-            let _tags = obj.tags.map((t) => tags[t]?.name);
+            let _tags = obj.tags?.map((t) => tags[t]?.name) || [];
             return _tags;
           },
           keys: ["tags.name"],
@@ -265,6 +266,10 @@ export default () => {
     };
   }, [observerTarget]);
 
+  const [statusFilter, setStatusFilter] = useState<
+    HentaiInfo["status"] | "none" | undefined
+  >(undefined);
+
   return (
     <div>
       <div id="topbar">
@@ -329,8 +334,8 @@ export default () => {
                   const result = ev.target?.result as string;
                   const json = JSON.parse(result);
                   if (!json) return;
-                  if (!json["info"]) json["info"] = {};
-                  if (!json["list"]) json["list"] = {};
+                  // if (!json["info"]) json["info"] = {};
+                  // if (!json["list"]) json["list"] = {};
                   // if (
                   //   ((info && Object.keys(info).length > 0) ||
                   //     (ratings && Object.keys(ratings).length > 0)) &&
@@ -339,20 +344,55 @@ export default () => {
                   //   )
                   // )
                   //   return;
-                  if (!json["tags"]) json["tags"] = {};
-                  for (let i in json["info"]) {
-                    let item = json["info"][i];
-                    for (let id in item.tags) {
-                      let tag = item.tags[id];
-                      if (typeof tag == "number") continue;
-                      json["tags"][id] = tag;
-                      json["info"][i].tags[id] = tag;
-                    }
+                  // if (!json["tags"]) json["tags"] = {};
+                  if (!json["local"]) json["local"] = {};
+                  if (!json["sync"]) json["sync"] = {};
+                  // for (let i in json["info"]) {
+                  //   let item = json["info"][i];
+                  //   for (let id in item.tags) {
+                  //     let tag = item.tags[id];
+                  //     if (typeof tag == "number") continue;
+                  //     json["tags"][id] = tag;
+                  //     json["info"][i].tags[id] = tag;
+                  //   }
+                  // }
+                  // chrome.storage.local.set({
+                  //   info: { ...info, ...json["info"] },
+                  //   list: { ...ratings, ...json["list"] },
+                  //   tags: { ...tags, ...json["tags"] },
+                  // });
+                  function merge<T>(a: T, b: T): T {
+                    console.log("merging", a, b);
+                    let _merge = (a: any, b: any) => {
+                      if (typeof a != "object" || typeof b != "object")
+                        return b;
+                      if (Array.isArray(a) && Array.isArray(b)) {
+                        let _a = [...a];
+                        _a = _a.concat(b);
+                        _a = _a.filter((v, i, self) => self.indexOf(v) === i);
+                        return _a;
+                      }
+                      let _a = { ...a };
+                      for (let key in b) _a[key] = _merge(a[key], b[key]);
+
+                      return _a;
+                    };
+                    let res = _merge(a, b);
+                    console.log("merged", res);
+                    return res;
                   }
-                  chrome.storage.local.set({
-                    info: { ...info, ...json["info"] },
-                    list: { ...ratings, ...json["list"] },
-                    tags: { ...tags, ...json["tags"] },
+                  let mergeStorage = async (type: "sync" | "local") => {
+                    console.log(type);
+                    let storage = await chrome.storage[type].get();
+                    console.log(type, storage);
+                    await chrome.storage[type].set(merge(storage, json[type]));
+                  };
+                  Promise.all([
+                    mergeStorage("sync"),
+                    mergeStorage("local"),
+                  ]).then(() => {
+                    alert("Imported successfully");
+                    // location.reload();
                   });
                 };
                 reader.readAsText(file);
@@ -365,13 +405,27 @@ export default () => {
           </button>
           <button
             onClick={() => {
-              getInfo().then((info) => {
-                let _info = { ...info };
-                getRatings().then((ratings) => {
+              // getInfo().then((info) => {
+              //   let _info = { ...info };
+              //   getRatings().then((ratings) => {
+              //     let json = JSON.stringify({
+              //       info: _info,
+              //       list: ratings,
+              //       tags,
+              //     });
+              //     let blob = new Blob([json], { type: "application/json" });
+              //     let url = URL.createObjectURL(blob);
+              //     let a = document.createElement("a");
+              //     a.href = url;
+              //     a.download = `my-nhentai-list-${Date.now()}.json`;
+              //     a.click();
+              //   });
+              // });
+              chrome.storage.local.get().then((local) => {
+                chrome.storage.sync.get().then((sync) => {
                   let json = JSON.stringify({
-                    info: _info,
-                    list: ratings,
-                    tags,
+                    local,
+                    sync,
                   });
                   let blob = new Blob([json], { type: "application/json" });
                   let url = URL.createObjectURL(blob);
@@ -394,9 +448,11 @@ export default () => {
                 )
               )
                 return;
-              chrome.storage.local.remove("info");
-              chrome.storage.local.remove("list");
-              chrome.storage.local.remove("tags");
+              // chrome.storage.local.remove("info");
+              // chrome.storage.local.remove("list");
+              // chrome.storage.local.remove("tags");
+              chrome.storage.local.clear();
+              chrome.storage.sync.clear();
               location.reload();
             }}
             className="save-button"
@@ -404,56 +460,78 @@ export default () => {
             CLEAR
           </button>
         </div>
+        <div id="status-selector-container">
+          <StatusSelector
+            // className={styles.status}
+            onChange={(status) => setStatusFilter(status as any)}
+            selected={statusFilter}
+            extra={[["none", "NONE"]]}
+          />
+        </div>
         <div id="titles_list">
           {info && ratings && (
             <>
               {search.length > 0 ? (
                 <>
-                  {matches.slice(0, itemsShown).map((match, index) => {
-                    const info = match.item;
-                    const key = info.id;
-                    const rating = ratings?.[key];
-                    return (
-                      <HentaiInfoComponent
-                        CONFIG={CONFIG}
-                        allTags={tags}
-                        id={key}
-                        key={key}
-                        info={info}
-                        rating={rating}
-                        match={match}
-                        select={select}
-                        selected={selected.includes(key)}
-                        setRef={
-                          index == itemsShown - 1
-                            ? setObserverTarget
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
+                  {matches
+                    .filter((t) => {
+                      if (!statusFilter) return true;
+                      if (statusFilter == "none") return !t.item.status;
+                      return t.item.status == statusFilter;
+                    })
+                    .slice(0, itemsShown)
+                    .map((match, index) => {
+                      const info = match.item;
+                      const key = info.id;
+                      const rating = ratings?.[key];
+                      return (
+                        <HentaiInfoComponent
+                          CONFIG={CONFIG}
+                          allTags={tags}
+                          id={key}
+                          key={key}
+                          info={info}
+                          rating={rating}
+                          match={match}
+                          select={select}
+                          selected={selected.includes(key)}
+                          setRef={
+                            index == itemsShown - 1
+                              ? setObserverTarget
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
                 </>
               ) : (
                 <>
-                  {itemArray.slice(0, itemsShown).map((key, index) => {
-                    return (
-                      <HentaiInfoComponent
-                        CONFIG={CONFIG}
-                        allTags={tags}
-                        id={key}
-                        key={key}
-                        info={info?.[key]}
-                        rating={ratings?.[key]}
-                        select={select}
-                        selected={selected.includes(key)}
-                        setRef={
-                          index == itemsShown - 1
-                            ? setObserverTarget
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
+                  {itemArray
+                    .filter((t) => {
+                      if (!statusFilter) return true;
+                      if (statusFilter == "none") return !info?.[t]?.status;
+                      return info?.[t]?.status == statusFilter;
+                    })
+                    .slice(0, itemsShown)
+                    .map((key, index) => {
+                      return (
+                        <HentaiInfoComponent
+                          CONFIG={CONFIG}
+                          allTags={tags}
+                          id={key}
+                          key={key}
+                          info={info?.[key]}
+                          rating={ratings?.[key]}
+                          select={select}
+                          selected={selected.includes(key)}
+                          setRef={
+                            index == itemsShown - 1
+                              ? setObserverTarget
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
                 </>
               )}
             </>

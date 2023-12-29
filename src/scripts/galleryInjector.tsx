@@ -1,15 +1,25 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import Fuse from "fuse.js";
 import { ElementBuilder } from "../helpers/ElementBuilder";
-import { getTags } from "../helpers/chromeGetter";
-import { Tag } from "../models/HentaiInfo";
+import { getInfo, getRatings, getTags } from "../helpers/chromeGetter";
+import { HentaiInfo, Tag } from "../models/HentaiInfo";
 import { InfoList, RatingList } from "../models/RatingList";
 import { MyNHentaiListConfiguration } from "../pages/ConfigPage";
 import "../sass/galleryInjector.scss";
-import CustomSearchBar from "../components/CustomSearchBar";
+import CustomSearchBar from "../components/gallery/CustomSearchBar";
+import CustomGallery from "../components/gallery/CustomGallery";
+import CustomContainer, {
+  GalleryItem,
+} from "../components/gallery/CustomContainer";
 var CONFIG: Partial<MyNHentaiListConfiguration>;
 // console.log(localStorage.getItem("censorImages"));
+
+declare global {
+  interface Window {
+    reader: any;
+    addedPageCounter: boolean;
+  }
+}
 
 var customBarAdded = false;
 
@@ -34,13 +44,14 @@ function isMobile() {
   return check;
 }
 
-var info: InfoList = {};
-var ratings: RatingList = {};
-var tags: Record<number, Tag> = {};
-var favoriteTags: number[] = [];
-var defaultSelected: number[] = [];
-var currentlySelected: number[] = [];
-var currentlyExcluded: number[] = [];
+var info: InfoList | undefined = {};
+var ratings: RatingList | undefined = {};
+var tags: Record<number, Tag> | undefined = {};
+var favoriteTags: number[] | undefined = [];
+var defaultSelected: number[] | undefined = [];
+var currentlySelected: number[] | undefined = [];
+var currentlyExcluded: number[] | undefined = [];
+var defaultSorting: number = 0;
 
 const forAll = (selector: string, callback: (element: Element) => void) => {
   let elements = document.querySelectorAll(selector);
@@ -54,19 +65,35 @@ const forAll = (selector: string, callback: (element: Element) => void) => {
 //   if (searchBar) searchBar.value = "";
 // }
 function inject() {
-  // console.log("injecting");
-  forAll(".rating", (item) => {
-    item.remove();
-  });
-  forAll(".gallery-tags", (item) => {
-    item.remove();
-  });
-  forAll(".read-indicator", (item) => {
-    item.remove();
-  });
-  forAll(".gallery", (item) => {
-    injectItem(item as HTMLDivElement);
-  });
+  {
+    let comments = document.getElementById("comment-container");
+    let comment_post = document.getElementById("comment-post-container");
+    if (comments) {
+      if (!CONFIG["showComments"]) comments.style.display = "none";
+      else comments.style.display = "";
+    }
+    if (comment_post) {
+      if (!CONFIG["showComments"]) comment_post.style.display = "none";
+      else comment_post.style.display = "";
+    }
+  }
+
+  let containerClasses = document.getElementsByClassName(
+    "container index-container"
+  );
+  let containers = [] as Element[];
+  for (let i = 0; i < containerClasses.length; i++)
+    if (containerClasses[i]) containers.push(containerClasses[i]);
+  let related_container = document.getElementById("related-container");
+  if (related_container) containers.push(related_container);
+  let recent_favorites = document.getElementById("recent-favorites-container");
+  if (recent_favorites) containers.push(recent_favorites);
+  let fav_container = document.getElementById("favcontainer");
+  if (fav_container) containers.push(fav_container);
+
+  for (let container of containers) {
+    injectOnContainer(container as HTMLDivElement);
+  }
 
   if (!CONFIG["dontRedirectSearchToAdvanced"]) {
     let transferMatch = location.href.match(
@@ -97,15 +124,15 @@ function inject() {
       } ${idOrName}`;
     else {
       newQ = `${searchParams.get("q") || ""} ${shouldExclude ? "-" : ""}${
-        tags[idOrName]?.type || ""
-      }:"${tags[idOrName]?.name}"`;
+        tags?.[idOrName]?.type || ""
+      }:"${tags?.[idOrName]?.name}"`;
     }
     searchParams.delete("q");
     searchParams.append("q", newQ.trim());
     if (location.href.match("[?&]q=")) navigate("?" + searchParams.toString());
     else navigate("/search/?" + searchParams.toString());
   };
-  let _tags = Object.values(tags);
+  let _tags = Object.values(tags ?? []);
   if (location.href.match("[?&]q=")) {
     // console.log("ADDING ADDERS");
     let _adders = document.getElementsByClassName("search-buttons");
@@ -167,22 +194,22 @@ function inject() {
 
     let toTestFor: number[] = [];
     if (!CONFIG["noDefaultAddToSearch"])
-      toTestFor = toTestFor.concat(defaultSelected);
+      toTestFor = toTestFor.concat(defaultSelected ?? []);
     if (!CONFIG["noCurrentlySelectedAddToSearch"])
       toTestFor = toTestFor.concat(
-        currentlySelected.filter((t) => !currentlyExcluded.includes(t))
+        (currentlySelected ?? []).filter((t) => !currentlyExcluded?.includes(t))
       );
     if (!CONFIG["noFavoriteAddToSearch"])
-      toTestFor = toTestFor.concat(favoriteTags);
+      toTestFor = toTestFor.concat(favoriteTags ?? []);
     if (!CONFIG["ignoreCurrentlyExcludedInAddToSearch"])
-      toTestFor = toTestFor.filter((t) => !currentlyExcluded.includes(t));
+      toTestFor = toTestFor.filter((t) => !currentlyExcluded?.includes(t));
     toTestFor = toTestFor.filter(
       (id) => !searchingFor?.find((t) => t.id == -id)
     );
 
     if (!CONFIG["noExcludeFromSearch"])
       toTestFor = toTestFor.concat(
-        currentlyExcluded
+        (currentlyExcluded ?? [])
           .filter((id) => !searchingFor?.find((t) => t.id == id))
           .map((t) => -t)
       );
@@ -196,7 +223,7 @@ function inject() {
       }
       if (!searchingFor?.find((t) => t?.id == defaultS)) {
         if (defaultS < 0) defaultS = -defaultS;
-        if (tags[defaultS])
+        if (tags?.[defaultS])
           adders.append(
             new ElementBuilder("button")
               .setHtml(
@@ -267,7 +294,6 @@ function inject() {
         );
       }
   }
-
   // localStorage.setItem(
   //   "customSearchBar",
   //   `${!(CONFIG["noCustomSearchBar"] ?? false)}`
@@ -276,15 +302,15 @@ function inject() {
   if (!CONFIG["noCustomSearchBar"]) {
     if (customBarAdded) return;
     customBarAdded = true;
-    let searchForm = document.getElementsByClassName(
-      "search"
-    )[0] as HTMLFormElement;
-    searchForm.style.position = "relative";
+    let searchForm = document.getElementsByClassName("search")[0] as
+      | HTMLFormElement
+      | undefined;
+    if (searchForm) searchForm.style.position = "relative";
 
     // @ts-ignore
     const root = ReactDOM.createRoot(searchForm);
     const render = () => {
-      console.log("Rendering React");
+      // console.log("Rendering React");
       root.render(<CustomSearchBar />);
     };
 
@@ -513,101 +539,206 @@ function inject() {
   }
 }
 
-function injectItem(item: HTMLDivElement) {
-  let cover = item.children[0] as HTMLAnchorElement;
-  let id = cover.href.match(/g\/([0-9]+)/)?.[1];
-  if (id) {
-    // if (CONFIG["censorImages"])
-    //   (cover.children[0] as HTMLImageElement).classList.add("censored");
-
-    if (!CONFIG["hideRatingOnGallery"]) {
-      let rating = ratings[id];
-      let ratingDiv = document.createElement("div");
-      ratingDiv.classList.add("rating");
-      if (rating || rating == 0)
-        if (rating >= 6) ratingDiv.classList.add("rating--positive");
-        else if (rating >= 4) ratingDiv.classList.add("rating--neutral");
-        else ratingDiv.classList.add("rating--negative");
-      ratingDiv.innerText =
-        rating == 0 || (rating && rating >= 0)
-          ? rating.toFixed(2)
-          : "NOT RATED";
-      item.appendChild(ratingDiv);
+function injectOnContainer(container: HTMLDivElement) {
+  if (container.classList.contains("custom-gallery-container")) return;
+  container.classList.add("custom-gallery-container");
+  // console.log(container);
+  let children = container.children;
+  let _title = children[0];
+  let title = "";
+  if (_title instanceof HTMLHeadingElement) title = _title.innerText;
+  let galleries = [] as HTMLDivElement[];
+  for (let i = title ? 1 : 0; i < children.length; i++) {
+    let child = children[i] as HTMLDivElement;
+    if (child.classList.contains("gallery-favorite")) {
+      child = child.children[1] as HTMLDivElement;
     }
-
-    if (!CONFIG["hideReadOnGallery"]) {
-      let readDiv = document.createElement("div");
-      readDiv.classList.add("read-indicator");
-      readDiv.classList.add(info[id] ? "read" : "unread");
-      // check or x
-      readDiv.innerText = info[id] ? "✓" : "✗";
-      item.appendChild(readDiv);
-    }
+    if (child.classList.contains("gallery")) galleries.push(child);
   }
+  // console.log(_title, title, galleries);
+  // @ts-ignore
+  let root = ReactDOM.createRoot(container);
+  let galleryInfo = [] as GalleryItem[];
+  for (let gallery of galleries) {
+    // console.log(gallery);
+    let anchor = gallery.children[0] as HTMLAnchorElement;
+    let img = anchor.children[0] as HTMLImageElement;
+    let title = anchor.children[2] as HTMLDivElement;
+    // console.log(img, img.src, img.getAttribute("data-src"));
+    let id = anchor.href?.match(/\/g\/([0-9]+)/)?.[1];
+    if (!id) continue;
 
-  let addTagsDiv = (dataTags: number[], tagsContainerClassName: string) => {
-    let tagsDiv = document.createElement("div");
-    tagsDiv.className = tagsContainerClassName;
-    if (dataTags) {
-      // console.log(dataTags);
-      for (let tagId of dataTags) {
-        let tagDiv = document.createElement("div");
-        tagDiv.classList.add("gallery-tag");
-        tagDiv.innerText =
-          tags[tagId]?.name || `UNKNOWN TAG (${tagId.toString()})`;
-        if (favoriteTags.includes(tagId))
-          tagDiv.classList.add("gallery-tag--favorite");
-
-        if (currentlySelected.includes(tagId))
-          tagDiv.classList.add("gallery-tag--selected");
-        tagsDiv.appendChild(tagDiv);
-      }
-    }
-    item.appendChild(tagsDiv);
-
-    let children = tagsDiv.children;
-    let totalWidth = 0;
-    for (let i = 0; i < children.length; i++)
-      totalWidth += children[i].clientWidth;
-    totalWidth += 8 * (children.length - 1) + 12;
-
-    if (totalWidth > tagsDiv.clientWidth) {
-      tagsDiv.setAttribute("data-total-width", totalWidth.toString());
-      let intersectionObserver = new IntersectionObserver(
-        (entries, observer) => {
-          let entry = entries[0];
-          if (entry.isIntersecting) {
-            if (!tagsDiv.classList.contains("animating"))
-              tagsDiv.classList.add("animating");
-          } else if (tagsDiv.classList.contains("animating"))
-            tagsDiv.classList.remove("animating");
-        }
-      );
-      intersectionObserver.observe(tagsDiv);
-    }
+    let info: GalleryItem = {
+      dataTags:
+        gallery
+          .getAttribute("data-tags")
+          ?.split(" ")
+          .map((a) => parseInt(a)) || [],
+      link: anchor.href,
+      image: {
+        src: img.getAttribute("data-src")!,
+        width: img.width,
+        height: img.height,
+      },
+      id,
+      title: title.innerText,
+      anchorPadding: anchor.style.padding,
+    };
+    galleryInfo.push(info);
+    // console.log(info);
+  }
+  let render = () => {
+    root.render(
+      <CustomContainer
+        title={title}
+        // galleries={galleries}
+        galleryInfo={galleryInfo}
+      />
+    );
   };
-
-  let dataTags = item
-    .getAttribute("data-tags")
-    ?.split(" ")
-    ?.map((i) => parseInt(i));
-
-  if (!dataTags) return;
-  if (!CONFIG["noFavoriteChips"])
-    addTagsDiv(
-      dataTags.filter((id) => {
-        return favoriteTags.includes(id);
-      }),
-      "gallery-tags" + (CONFIG["noRegularTagChips"] ? "" : " favorite-tags")
-    );
-  if (!CONFIG["noRegularTagChips"])
-    addTagsDiv(
-      dataTags.filter((id) => {
-        return !favoriteTags.includes(id);
-      }),
-      "gallery-tags"
-    );
+  render();
 }
+
+// let roots = {} as Record<string, any>;
+// function injectItem(item: HTMLDivElement, id?: string, datatags?: number[]) {
+//   let cover = item.children[0] as HTMLAnchorElement;
+//   if (!id) {
+//     id = cover.href.match(/g\/([0-9]+)/)?.[1];
+//     if (!id) return;
+//   }
+//   let reactDiv;
+//   let root: any;
+//   if (!item.classList.contains("custom-gallery")) {
+//     item.classList.add("custom-gallery");
+
+//     reactDiv = document.createElement("div");
+//     reactDiv.classList.add("custom-gallery-root");
+//     item.appendChild(reactDiv);
+//     // @ts-ignore
+//     root = ReactDOM.createRoot(reactDiv);
+//     roots[id] = root;
+//   } else {
+//     reactDiv = item.getElementsByClassName("custom-gallery-root")[0];
+//     root = roots[id];
+//   }
+
+//   if (!datatags)
+//     datatags = item
+//       .getAttribute("data-tags")
+//       ?.split(" ")
+//       ?.map((i) => parseInt(i));
+//   if (CONFIG.useReactGalleries) {
+//     let render = () => {
+//       root.render(
+//         <CustomGallery
+//           defaultSorting={defaultSorting}
+//           defaultTags={defaultSelected}
+//           excludedTags={currentlyExcluded}
+//           id={id}
+//           dataTags={datatags}
+//           tags={tags}
+//           info={info}
+//           CONFIG={CONFIG}
+//           ratings={ratings}
+//           currentlySelected={currentlySelected}
+//           favoriteTags={favoriteTags}
+//         />
+//       );
+//     };
+//     render();
+//     return;
+//   }
+//   if (reactDiv) reactDiv.remove();
+
+//   if (id) {
+//     if (CONFIG["censorImages"])
+//       (cover.children[0] as HTMLImageElement).classList.add("censored");
+
+//     if (!CONFIG["hideRatingOnGallery"]) {
+//       let rating = ratings[id];
+//       let ratingDiv = document.createElement("div");
+//       ratingDiv.classList.add("rating");
+//       if (rating || rating == 0)
+//         if (rating >= 6) ratingDiv.classList.add("rating--positive");
+//         else if (rating >= 4) ratingDiv.classList.add("rating--neutral");
+//         else ratingDiv.classList.add("rating--negative");
+//       ratingDiv.innerText =
+//         rating == 0 || (rating && rating >= 0)
+//           ? rating.toFixed(2)
+//           : "NOT RATED";
+//       item.appendChild(ratingDiv);
+//     }
+
+//     if (!CONFIG["hideReadOnGallery"]) {
+//       let readDiv = document.createElement("div");
+//       readDiv.classList.add("read-indicator");
+//       readDiv.classList.add(info[id] ? "read" : "unread");
+//       // check or x
+//       readDiv.innerText = info[id] ? "✓" : "✗";
+//       item.appendChild(readDiv);
+//     }
+//   }
+
+//   let addTagsDiv = (dataTags: number[], tagsContainerClassName: string) => {
+//     let tagsDiv = document.createElement("div");
+//     tagsDiv.className = tagsContainerClassName;
+//     if (dataTags) {
+//       // console.log(dataTags);
+//       for (let tagId of dataTags) {
+//         let tagDiv = document.createElement("div");
+//         tagDiv.classList.add("gallery-tag");
+//         tagDiv.innerText =
+//           tags[tagId]?.name || `UNKNOWN TAG (${tagId.toString()})`;
+//         if (favoriteTags.includes(tagId))
+//           tagDiv.classList.add("gallery-tag--favorite");
+//         if (currentlySelected.includes(tagId))
+//           tagDiv.classList.add("gallery-tag--selected");
+//         tagsDiv.appendChild(tagDiv);
+//       }
+//     }
+//     item.appendChild(tagsDiv);
+//     let children = tagsDiv.children;
+//     let totalWidth = 0;
+//     for (let i = 0; i < children.length; i++)
+//       totalWidth += children[i].clientWidth;
+//     totalWidth += 8 * (children.length - 1) + 12;
+//     if (totalWidth > tagsDiv.clientWidth) {
+//       tagsDiv.setAttribute("data-total-width", totalWidth.toString());
+//       let intersectionObserver = new IntersectionObserver(
+//         (entries, observer) => {
+//           let entry = entries[0];
+//           if (entry.isIntersecting) {
+//             if (!tagsDiv.classList.contains("animating"))
+//               tagsDiv.classList.add("animating");
+//           } else if (tagsDiv.classList.contains("animating"))
+//             tagsDiv.classList.remove("animating");
+//         }
+//       );
+//       intersectionObserver.observe(tagsDiv);
+//     }
+//   };
+
+//   let dataTags = item
+//     .getAttribute("data-tags")
+//     ?.split(" ")
+//     ?.map((i) => parseInt(i));
+
+//   if (!dataTags) return;
+//   if (!CONFIG["noFavoriteChips"])
+//     addTagsDiv(
+//       dataTags.filter((id) => {
+//         return favoriteTags.includes(id);
+//       }),
+//       "gallery-tags" + (CONFIG["noRegularTagChips"] ? "" : " favorite-tags")
+//     );
+//   if (!CONFIG["noRegularTagChips"])
+//     addTagsDiv(
+//       dataTags.filter((id) => {
+//         return !favoriteTags.includes(id);
+//       }),
+//       "gallery-tags"
+//     );
+// }
 
 Promise.all([chrome.storage.local.get(), chrome.storage.sync.get()]).then(
   ([local, sync]) => {
@@ -620,6 +751,7 @@ Promise.all([chrome.storage.local.get(), chrome.storage.sync.get()]).then(
     if (!sync["defaultSelectedTags"]) sync["defaultSelectedTags"] = [];
     if (!sync["currentlySelectedTags"]) sync["currentlySelectedTags"] = [];
     if (!sync["currentlyExcludedTags"]) sync["currentlyExcludedTags"] = [];
+    if (!sync["defaultTagSorting"]) sync["defaultTagSorting"] = 0;
 
     info = local["info"];
     ratings = local["list"];
@@ -629,6 +761,7 @@ Promise.all([chrome.storage.local.get(), chrome.storage.sync.get()]).then(
     defaultSelected = sync["defaultSelectedTags"];
     currentlySelected = sync["currentlySelectedTags"];
     currentlyExcluded = sync["currentlyExcludedTags"];
+    defaultSorting = sync["defaultTagSorting"];
     // console.log(CONFIG);
 
     inject();
@@ -754,8 +887,8 @@ const highlightFavorite = async () => {
       }
     }
   };
-  highlight(favoriteTags, "favorite-tag", "noFavoriteHighlight");
-  highlight(currentlySelected, "selected-tag", "noSearchingHighlight");
+  highlight(favoriteTags ?? [], "favorite-tag", "noFavoriteHighlight");
+  highlight(currentlySelected ?? [], "selected-tag", "noSearchingHighlight");
 };
 
 let removeClass = (className: string) => {
@@ -770,7 +903,7 @@ let removeContextMenus = () => {
   removeClass("context-menu");
 };
 
-const getSearchForTagURL = async (tagId: number) => {
+export const getSearchForTagURL = async (tagId: number) => {
   let knownTags = await getTags();
   if (!knownTags[tagId]) {
     let newKnown = await getToKnow(tagId);
@@ -792,22 +925,38 @@ const getSearchForTagURL = async (tagId: number) => {
       ] as undefined | number[]) || [];
     researchTags.push(...defaultTags);
   }
+  let excludedTags = ((
+    await chrome.storage.sync.get("currentlyExcludedTags")
+  )?.["currentlyExcludedTags"] || []) as number[];
+
   if (!CONFIG["dontChangeTagURLsSelected"]) {
     let selectedTags =
       ((await chrome.storage.sync.get("currentlySelectedTags"))?.[
         "currentlySelectedTags"
       ] as undefined | number[]) ?? [];
-    researchTags.push(...selectedTags);
+    researchTags.push(
+      ...selectedTags.filter((t) => {
+        return !excludedTags.includes(t);
+      })
+    );
+  }
+  if (!CONFIG["dontChangeTagURLsExcluded"]) {
+    researchTags.push(...excludedTags.map((t) => -t));
   }
   if (!researchTags.includes(tagId)) researchTags.push(tagId);
   let url = `https://nhentai.net/search/?q=${researchTags
     .map((id) => {
+      let exclude = false;
+      if (id < 0) {
+        id = -id;
+        exclude = true;
+      }
       let tag = knownTags[id];
       if (!tag) {
         // alert("SOMETHING WENT WRONG WITH TAG " + id);
         return "";
       }
-      return `${tag.type}%3A"${tag.name}"`;
+      return `${exclude ? "-" : ""}${tag.type}%3A"${tag.name}"`;
     })
     .join("+")
     .replace(/ /g, "+")}${
@@ -819,6 +968,7 @@ async function getToKnow(tagId: number) {
   let elm = document.getElementsByClassName(
     `tag-${tagId}`
   )[0] as HTMLAnchorElement;
+  if (!elm) return;
   if (elm.classList.contains("modified-href")) return;
   let [_, type, name] = elm.href.match(/([^\/]+?)\/([^\/]+?)\/?$/) || [];
   if (!type || !name) {
@@ -850,7 +1000,7 @@ for (let i = 0; i < htmlTagCollection.length; i++) {
         knownTags = newKnown;
       }
 
-      let favoriteTags = fT["favoriteTags"] as number[];
+      let favoriteTags = fT["favoriteTags"] as number[] | undefined;
 
       let mobile = isMobile();
 
@@ -884,7 +1034,7 @@ for (let i = 0; i < htmlTagCollection.length; i++) {
           createItem(
             () => {
               return `${
-                favoriteTags.includes(tagId) ? "Unfavorite" : "Favorite"
+                favoriteTags?.includes(tagId) ? "Unfavorite" : "Favorite"
               } ${knownTags[tagId]?.type || ""} ${
                 knownTags[tagId]?.name ||
                 document.getElementsByClassName("tag-" + tagId)[0]?.children[0]
@@ -893,9 +1043,12 @@ for (let i = 0; i < htmlTagCollection.length; i++) {
               }`;
             },
             async (ev) => {
-              if (favoriteTags.includes(tagId))
+              if (favoriteTags?.includes(tagId))
                 favoriteTags.splice(favoriteTags.indexOf(tagId), 1);
-              else favoriteTags.push(tagId);
+              else {
+                if (!favoriteTags) favoriteTags = [];
+                favoriteTags.push(tagId);
+              }
 
               await chrome.storage.sync.set({ favoriteTags });
               // highlightFavorite();
@@ -938,9 +1091,9 @@ for (let i = 0; i < htmlTagCollection.length; i++) {
             }
           ),
           createItem(
-            `${currentlySelected.includes(tagId) ? "Remove" : "Add"} ${
+            `${currentlySelected?.includes(tagId) ? "Remove" : "Add"} ${
               knownTags[tagId]?.name || tagId
-            } ${currentlySelected.includes(tagId) ? "from" : "to"} tag search`,
+            } ${currentlySelected?.includes(tagId) ? "from" : "to"} tag search`,
             async (ev) => {
               chrome.storage.sync.get("currentlySelectedTags", (cST) => {
                 let currentlySelectedTags = cST["currentlySelectedTags"] || [];
@@ -993,6 +1146,60 @@ window.addEventListener("click", removeContextMenus);
 window.addEventListener("contextmenu", removeContextMenus);
 
 let changeURL = async () => {
+  htmlTagCollection = document.getElementsByClassName("tag");
+  let s = new URLSearchParams(location.search);
+  if (s.get("dontclose")) {
+    if (htmlTagCollection.length == 0) return;
+    let knownTags = await getTags();
+    for (let i = 0; i < htmlTagCollection.length; i++) {
+      let tagId = Number(
+        (htmlTagCollection[i] as HTMLAnchorElement).className.match(
+          /tag-([0-9]+)/
+        )?.[1]
+      );
+
+      let elm = document.getElementsByClassName(
+        `tag-${tagId}`
+      )[0] as HTMLAnchorElement;
+      if (!elm) {
+        console.error(`No tag-${tagId}`);
+        continue;
+      }
+      if (elm.classList.contains("modified-href")) return;
+      let [_, type, name] = elm.href.match(/([^\/]+?)\/([^\/]+?)\/?$/) || [];
+      if (!type || !name) {
+        alert("SOMETHING WENT WRONG WITH TAG " + tagId);
+        return;
+      }
+      knownTags[tagId] = { id: tagId, type, name: name.replace(/[-+]/g, " ") };
+    }
+    await chrome.storage.local.set({ tags: knownTags });
+    // console.log("Tags updated");
+    let searchParams = new URLSearchParams(location.search);
+    let firstPage = parseInt(searchParams.get("page") || "0");
+
+    let wait = (millis: number) =>
+      new Promise((resolve) => setTimeout(resolve, millis));
+    await wait(1500);
+
+    let getNextPage = (currentPage: number, nextPage: number) =>
+      currentPage > 0
+        ? location.href.replace("page=" + currentPage, "page=" + nextPage)
+        : location.href +
+          "&page=" +
+          nextPage; /* .replace(/&?dontclose=.+?(&|$)/gi, (a, g1) => g1) */
+
+    let open = (...args: any[]) => {
+      // let a = document.createElement("a");
+      // a.href = args[0];
+      // a.target = args[1];
+      // a.click();
+      window.location.replace(args[0]);
+    };
+
+    open(getNextPage(firstPage, firstPage + 1));
+    return;
+  }
   if (CONFIG && CONFIG["dontChangeTagURLs"]) {
     let htmlTagCollection = document.getElementsByClassName("tag");
     for (let i = 0; i < htmlTagCollection.length; i++) {
@@ -1002,7 +1209,6 @@ let changeURL = async () => {
     }
     return;
   }
-  htmlTagCollection = document.getElementsByClassName("tag");
   for (let i = 0; i < htmlTagCollection.length; i++) {
     let tag = htmlTagCollection[i] as HTMLAnchorElement;
     let tagId = Number(tag.className.match(/tag-([0-9]+)/)?.[1]);
@@ -1046,3 +1252,153 @@ chrome.storage.sync.onChanged.addListener((changes) => {
   changeURL();
   inject();
 });
+
+let lastPage = 0;
+let id = location.pathname.match(/\/g\/([0-9]+)/)?.[1];
+
+if (id) {
+  window.addEventListener("message", async (event) => {
+    if (!id) return;
+    let { data } = event;
+    if (!data.type || data.type != "PAGE_CHANGE") return;
+    let { page } = data;
+    let info = await getInfo();
+    if (!info[id]) return;
+
+    if (
+      (info[id].status != "reading" && info[id].status != "rereading") ||
+      page > (info[id].last_page || -1)
+    ) {
+      let oldStatus = info[id].status;
+      let lastPage = info[id].last_page || -1;
+      let pages = info[id].num_pages || 0;
+      let percent = pages > 0 ? page / pages : 0;
+
+      let save = () => {
+        if (!id) return;
+        // if (oldStatus != info[id].status)
+        //   console.log("NEW STATUS", info[id].status);
+        // if (info[id].last_page != page)
+        //   console.log(`${page} - ${info[id].last_page}`);
+
+        info[id].last_page = page;
+        info[id].last_read = Date.now();
+
+        chrome.storage.local.set({ info });
+      };
+      let setStatus = (status: HentaiInfo["status"]) => {
+        info[id!].status = status;
+        if (status == "completed") {
+          info[id!].times_read = (info[id!].times_read || 0) + 1;
+          askRating(id!);
+        }
+        save();
+      };
+      let isStatus = (status: HentaiInfo["status"][]) =>
+        status.includes(info[id!].status);
+
+      if (!isStatus(["completed"])) {
+        if (percent > 0.9) {
+          setStatus("completed");
+          return;
+        }
+      }
+      if (
+        (page == 1 && !isStatus(["reading", "rereading"])) ||
+        (!isStatus(["completed", "reading", "rereading"]) && percent > 0.1)
+      ) {
+        if ((info[id].times_read || 0) > 0) setStatus("rereading");
+        else setStatus("reading");
+        return;
+      }
+      if (page > lastPage) save();
+    }
+  });
+
+  getInfo().then((info) => {
+    let _lp = info[id!]?.last_page;
+    if (_lp) lastPage = _lp;
+  });
+}
+
+async function askRating(id: string | number) {
+  let ratings = await getRatings();
+  let rating = ratings[id] ?? -1;
+  if (document.getElementById("rating-asker")) return;
+  let close = () => {
+    document.getElementById("rating-asker")?.remove();
+  };
+  let save = async () => {
+    let input = document.getElementById(
+      "rating-asker-input"
+    ) as HTMLInputElement;
+    if (!input) {
+      alert("Something went wrong...");
+      return;
+    }
+    let newRating = parseFloat(input.value);
+    if (
+      (!newRating && newRating != 0) ||
+      isNaN(newRating) ||
+      newRating < 0 ||
+      newRating > 10
+    ) {
+      alert("Invalid rating");
+      return;
+    }
+    ratings[id] = newRating;
+    await chrome.storage.local.set({ list: ratings });
+    close();
+  };
+  let asker = new ElementBuilder("div")
+    .setId("rating-asker")
+    .addClass("rating-asker")
+    .appendChildren(
+      new ElementBuilder("div")
+        .addClass("rating-asker-foreground")
+        .appendChildren(
+          new ElementBuilder("div")
+            .addClass("rating-asker-text")
+            .setText("Rate this doujin"),
+          new ElementBuilder("div")
+            .addClass("rating-asker-input-container")
+            .appendChildren(
+              new ElementBuilder("input")
+                .addClass("rating-asker-input")
+                .setId("rating-asker-input")
+                .setAttribute("type", "number")
+                .setAttribute("min", "0")
+                .setAttribute("max", "10")
+                .setAttribute("step", "0.1")
+                .setAttribute(
+                  "value",
+                  rating == 0 || (rating && rating >= 0)
+                    ? rating.toFixed(2)
+                    : undefined
+                )
+                .setAttribute("placeholder", "0.0")
+                .addEventListener("keydown", (ev) => {
+                  if (ev.key == "Enter") save();
+                })
+            ),
+          new ElementBuilder("div")
+            .addClass("rating-asker-buttons")
+            .appendChildren(
+              new ElementBuilder("button")
+                .addClass("rating-asker-button")
+                .addClass("btn")
+                .addClass("btn-primary")
+                .setText("SAVE")
+                .addEventListener("click", save),
+              new ElementBuilder("button")
+                .addClass("rating-asker-button")
+                .addClass("btn")
+                .addClass("btn-secondary")
+                .setText("CLOSE")
+                .addEventListener("click", close)
+            )
+        )
+    );
+
+  document.body.append(asker.build());
+}

@@ -22,11 +22,12 @@ export default () => {
   const [count, setCount] = useState<Record<number, number>>({});
   const [sortingFunction, setSortingFunction] = useState<number>(0);
 
-  const sortTags = (tags: Tag[]) => {
+  const sortTags = (tags: Tag[] | undefined) => {
     const byCount = (a: Tag, b: Tag) => count[b.id] - count[a.id];
     const byName = (a: Tag, b: Tag) => a.name.localeCompare(b.name);
 
     const _sort = () => {
+      if (!tags) return tags;
       switch (sortingFunction) {
         case 0:
           return tags.sort(byCount);
@@ -41,6 +42,11 @@ export default () => {
       }
     };
     return _sort()
+      ?.sort((a, b) => {
+        if (selectedTags.includes(a.id) == selectedTags.includes(b.id))
+          return 0;
+        return selectedTags.includes(a.id) ? -1 : 1;
+      })
       .sort((a, b) => {
         if (
           defaultSelectedTags.includes(a.id) ==
@@ -66,7 +72,7 @@ export default () => {
       return;
     let _count: Record<number, number> = {};
     Object.values(info).forEach((i) => {
-      i.tags.forEach((t) => {
+      i.tags?.forEach((t) => {
         _count[t] = (_count[t] || 0) + 1;
       });
       setCount(_count);

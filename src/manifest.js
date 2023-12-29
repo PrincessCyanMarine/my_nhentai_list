@@ -9,7 +9,7 @@ let manifest = {
   name: "My Hentai List",
   description:
     "An extension that allows rating and saving nhentai doujinshi to a list.",
-  version: "1.6.2",
+  version: "1.11.0",
   permissions: [
     "activeTab",
     "storage",

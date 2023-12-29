@@ -1,8 +1,9 @@
 import "../sass/injector.scss";
-import { HentaiInfo, Tag } from "../models/HentaiInfo";
+import { HentaiInfo, STATUS_NAME, Tag } from "../models/HentaiInfo";
 import { ElementBuilder } from "../helpers/ElementBuilder";
 import compareVersions from "../components/updateChecker";
 import { MyNHentaiListConfiguration } from "../pages/ConfigPage";
+import { getInfo } from "../helpers/chromeGetter";
 
 function getId() {
   let id: number;
@@ -22,8 +23,8 @@ let attempts = 0;
 function inject() {
   let id = getId()!;
   if (!id) return;
-  let info = document.getElementById("info");
-  if (!info) {
+  let infoDiv = document.getElementById("info");
+  if (!infoDiv) {
     attempts++;
     let timer = 100 + Math.floor(attempts / 5) * 1000;
     setTimeout(inject, timer);
@@ -66,9 +67,10 @@ function inject() {
     const step = (ev: MouseEvent, a: number) => {
       ev.preventDefault();
       ev.stopPropagation();
-      let rating = parseFloat(input.value);
-      rating = Math.min(10, Math.max(rating + a, -1));
-      input.value = rating.toFixed(2);
+      let rating = parseFloat(input.value || "-1");
+      rating = rating < 0 && a > 0 ? 0 : Math.min(10, Math.max(rating + a, -1));
+      if (rating < 0) rating = -1;
+      input.value = rating < 0 ? "" : rating.toFixed(2);
       save(rating);
     };
 
@@ -77,16 +79,17 @@ function inject() {
     leftArrow2.onclick = (ev) => step(ev, -1);
     rightArrow2.onclick = (ev) => step(ev, 1);
 
+    input.placeholder = "NOT RATED";
     input.type = "number";
-    input.value = rating.toFixed(2);
+    input.value = rating < 0 ? "" : rating.toFixed(2);
     input.min = "-1";
     input.max = "10";
     input.step = "0.5";
     input.className = "rating_input";
     input.onchange = function () {
-      let rating = parseFloat(input.value);
+      let rating = parseFloat(input.value || "-1");
       rating = Math.min(10, Math.max(rating, -1));
-      input.value = rating.toFixed(2);
+      input.value = rating < 0 ? "" : rating.toFixed(2);
       save(rating);
     };
 
@@ -99,7 +102,61 @@ function inject() {
     span.appendChild(rightArrow);
     span.appendChild(rightArrow2);
     label.appendChild(span);
-    info?.appendChild(label);
+    infoDiv?.appendChild(label);
+  });
+
+  getInfo().then((data) => {
+    let info = data[id] ?? {};
+    let save = () => {
+      data[id] = info;
+      chrome.storage.local.set({ info: data });
+    };
+
+    let label = new ElementBuilder("div")
+      .appendChildren(
+        new ElementBuilder("a")
+          .setText(`PROGRESS: ${info.last_page ?? 0}/${info.num_pages ?? 0}`)
+          .setAttribute(
+            "href",
+            `https://nhentai.net/g/${id}/${Math.max(
+              1,
+              Math.min(info.num_pages, info.last_page || 1)
+            )}/`
+          ),
+        new ElementBuilder("select")
+          .appendChildren(
+            ...[
+              undefined,
+              "reading",
+              "completed",
+              "on_hold",
+              "dropped",
+              "plan_to_read",
+              "rereading",
+            ].map((value) =>
+              new ElementBuilder("option")
+                .setText(STATUS_NAME(value))
+                .setAttribute("value", value)
+                .setAttribute(
+                  "selected",
+                  info.status == value ? "true" : undefined
+                )
+
+                .build()
+            )
+          )
+          .addClass("my-nhentai-list-information-injection-select")
+          .addEventListener("change", (ev) => {
+            let value = (ev.currentTarget! as HTMLSelectElement).value;
+            if (!value) info.status = undefined;
+            else info.status = value as any;
+            save();
+          }),
+        new ElementBuilder("span").setText(`READ ${info.times_read ?? 0} TIMES`)
+      )
+      .addClass("my-nhentai-list-information-injection");
+
+    infoDiv?.appendChild(label.build());
   });
 
   //   chrome.storage.local.get("list/", function (data) {
@@ -147,6 +204,14 @@ if (!/\/g\/[0-9]+\/[0-9]+/.test(window.location.pathname)) {
               (t) => t.id
             ) as any;
             if (!data["info"][id]) data["info"][id] = arrivingData;
+            else {
+              for (let k in arrivingData) {
+                let key = k as keyof HentaiInfo;
+                // console.log(key);
+                if (arrivingData[key] != data["info"][id][key])
+                  data["info"][id][key] = arrivingData[key];
+              }
+            }
             if (!data["info"][id]?.first_read)
               data["info"][id].first_read = timeNow;
             data["info"][id].last_read = timeNow;

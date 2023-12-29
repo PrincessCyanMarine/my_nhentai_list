@@ -1,3 +1,7 @@
+type ChildElement =
+  | HTMLElement
+  | Node
+  | ElementBuilder<keyof HTMLElementTagNameMap>;
 export class ElementBuilder<K extends keyof HTMLElementTagNameMap> {
   element: HTMLElementTagNameMap[K];
   constructor(tag: K) {
@@ -35,20 +39,22 @@ export class ElementBuilder<K extends keyof HTMLElementTagNameMap> {
 
   addEventListener<K extends keyof HTMLElementEventMap>(
     type: K,
-    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any
+    listener: (this: typeof this.element, ev: HTMLElementEventMap[K]) => any
   ) {
     this.element.addEventListener(type, listener as any);
     return this;
   }
-
-  appendChildren(...children: (HTMLElement | Node)[]): ElementBuilder<K>;
-  appendChildren(children: (HTMLElement | Node)[]): ElementBuilder<K>;
+  appendChildren(...children: ChildElement[]): ElementBuilder<K>;
+  appendChildren(children: ChildElement[]): ElementBuilder<K>;
   appendChildren(
-    first: (HTMLElement | Node)[] | (HTMLElement | Node),
-    ...rest: (HTMLElement | Node)[]
+    first: ChildElement[] | ChildElement,
+    ...rest: ChildElement[]
   ): ElementBuilder<K> {
     if (!Array.isArray(first)) first = [first];
-    for (let child of [...first, ...rest]) this.element.appendChild(child);
+    for (let child of [...first, ...rest]) {
+      if (child instanceof ElementBuilder) child = child.build();
+      this.element.appendChild(child);
+    }
     return this;
   }
 
@@ -56,7 +62,11 @@ export class ElementBuilder<K extends keyof HTMLElementTagNameMap> {
     return this.element;
   }
 
-  setAttribute(name: string, value: string) {
+  setAttribute(name: string, value: string | undefined) {
+    if (value == undefined) {
+      this.element.removeAttribute(name);
+      return this;
+    }
     this.element.setAttribute(name, value);
     return this;
   }
