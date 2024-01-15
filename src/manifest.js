@@ -9,13 +9,14 @@ let manifest = {
   name: "My Hentai List",
   description:
     "An extension that allows rating and saving nhentai doujinshi to a list.",
-  version: "1.11.0",
+  version: "1.11.3",
   permissions: [
     "activeTab",
     "storage",
     "tabs",
     "unlimitedStorage",
     "contextMenus",
+    "tabGroups",
   ],
   key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0i6gmupcJuA/BfHfbGw7nGonwbp805OTk229PWajxDktH4hycn59Vhm2pMk0jTgil9jlyZn58MJCqxfELHBqaLjjkSK609a5IgnZhEmI/ni0lCZkrGaQBH/7CeUIb/sbr9js6nDQpLgomODTwNGZvwI5L6MzHrxQHRM0LKG3qRlPbWWyFCQBTrvzs2bgnyYSy6pqACcBdfuzLnzOiSCqTvb1R6f3og7L+tqh3Ghz6H33U406mDUT4pnmh/AXVkA+MmZugr6IlAvuerSOSoJC1vpR47AuuLKlcMLrXQ+jHaFQ7p+dlmh15UAepENRLn9LjfUILFxDQxT21UkS43mpOQIDAQAB",
   content_scripts: [

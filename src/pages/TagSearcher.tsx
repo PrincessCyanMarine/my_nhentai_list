@@ -10,6 +10,7 @@ import { TagsContext } from "../context/tagsContext";
 import { InfoContext } from "../context/infoContext";
 import { RatingsContext } from "../context/ratingsContext";
 import Fuse from "fuse.js";
+import { createTabOnGroup } from "../helpers/tabHelper";
 // import { useDebug } from "../helpers/useDebug";
 
 // let url = `https://nhentai.net/search/?q=${}`
@@ -338,21 +339,30 @@ export default () => {
           />
 
           <a
-            href={`https://nhentai.net/search/?q=${selectedTags
-              .map((id) => {
-                let tag = tags[id];
-                if (!tag) return "";
-                return `${excludedTags.includes(tag.id) ? "-" : ""}${
-                  tag.type
-                }%3A"${tag?.name}"`;
-              })
-              .join("+")
-              .replace(/ /g, "+")}${
-              sortingSelected == 0
-                ? ""
-                : `&sort=popular${["-today", "-week", ""][sortingSelected - 1]}`
-            }`}
-            target="_blank"
+            onClick={async () => {
+              await createTabOnGroup(
+                {
+                  url: `https://nhentai.net/search/?q=${selectedTags
+                    .map((id) => {
+                      let tag = tags[id];
+                      if (!tag) return "";
+                      return `${excludedTags.includes(tag.id) ? "-" : ""}${
+                        tag.type
+                      }%3A"${tag?.name}"`;
+                    })
+                    .join("+")
+                    .replace(/ /g, "+")}${
+                    sortingSelected == 0
+                      ? ""
+                      : `&sort=popular${
+                          ["-today", "-week", ""][sortingSelected - 1]
+                        }`
+                  }`,
+                  active: true,
+                },
+                await chrome.tabs.getCurrent()
+              );
+            }}
           >
             <button>Search</button>
           </a>

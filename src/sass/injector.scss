@@ -65,6 +65,11 @@
   align-items: center;
   flex-direction: column;
   .rating-asker-foreground {
+    transition: opacity 0.2s 0s ease-in;
+    opacity: 0.5;
+    &:hover {
+      opacity: 1;
+    }
     background: #3a3a3a;
     width: 80%;
     color: #d9d9d9;

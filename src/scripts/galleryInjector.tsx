@@ -11,6 +11,8 @@ import CustomGallery from "../components/gallery/CustomGallery";
 import CustomContainer, {
   GalleryItem,
 } from "../components/gallery/CustomContainer";
+import { createTabOnGroup } from "../helpers/tabHelper";
+import { sendMessage } from "../helpers/messageHelper";
 var CONFIG: Partial<MyNHentaiListConfiguration>;
 // console.log(localStorage.getItem("censorImages"));
 
@@ -1084,10 +1086,7 @@ for (let i = 0; i < htmlTagCollection.length; i++) {
               // anchor.remove();
 
               // Open new tab on tab group
-              chrome.runtime.sendMessage({
-                type: "openTab",
-                url: newURL,
-              });
+              createTabOnGroup({ url: newURL });
             }
           ),
           createItem(
@@ -1327,6 +1326,7 @@ async function askRating(id: string | number) {
   if (document.getElementById("rating-asker")) return;
   let close = () => {
     document.getElementById("rating-asker")?.remove();
+    if (CONFIG.closeOnFinishReading) sendMessage({ type: "closeTab" });
   };
   let save = async () => {
     let input = document.getElementById(
@@ -1370,6 +1370,7 @@ async function askRating(id: string | number) {
                 .setAttribute("min", "0")
                 .setAttribute("max", "10")
                 .setAttribute("step", "0.1")
+                .setAttribute("autocomplete", "off")
                 .setAttribute(
                   "value",
                   rating == 0 || (rating && rating >= 0)

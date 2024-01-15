@@ -41,6 +41,10 @@ export type MyNHentaiListConfiguration = Partial<{
   galleryStyle: GALLERY_STYLE;
 
   dontShowMoreOnGallery: boolean;
+
+  readDefaultsToAnotherTab: boolean;
+  dontFocusOnAnotherTabRead: boolean;
+  closeOnFinishReading: boolean;
 }>;
 
 export enum SEARCH_MODE {
@@ -174,8 +178,27 @@ export default () => {
             ["noRegularTagChips", "Other tags chips", 0],
             ["noChipLinks", "Chip links", 0],
             ["dontShowMoreOnGallery", "Show more on select", 0],
+            ["closeOnFinishReading", "Close on finish reading", 0, true],
+            [
+              "readDefaultsToAnotherTab",
+              "Read defaults to another tab",
+              0,
+              true,
+            ],
           ]}
         />
+        {CONFIG["readDefaultsToAnotherTab"] && (
+          <>
+            <Option
+              _setConfig={_setConfig}
+              toggle={toggle}
+              CONFIG={CONFIG}
+              configKey="dontFocusOnAnotherTabRead"
+              type={0}
+              text="Focus on new tab"
+            />
+          </>
+        )}
 
         {!CONFIG["dontUseReactGalleries"] && (
           <p>

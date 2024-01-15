@@ -20,6 +20,10 @@ export type GalleryItem = {
 import style from "../../sass/CustomContainer.module.scss";
 import useDefaultTagURL from "../../hooks/useDefaultTagURL";
 import StatusSelector from "../StatusSelector";
+import ButtonLink from "../ButtonLink";
+import { createTabOnGroup } from "../../helpers/tabHelper";
+import { Tab } from "@mui/material";
+import { useDebug } from "../../helpers/useDebug";
 
 let galleryStyle = localStorage.getItem("galleryStyle")
   ? parseInt(localStorage.getItem("galleryStyle")!)
@@ -179,12 +183,20 @@ export default ({
             ({ image, title, dataTags, id, link, anchorPadding }) => (
               <div className="gallery" data-tags={dataTags.join(" ")}>
                 <a
-                  onClick={(ev) => {
-                    if (CONFIG.dontShowMoreOnGallery) return;
-
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    setSeeingMore(id);
+                  onClick={async (ev) => {
+                    if (!CONFIG.dontShowMoreOnGallery) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      setSeeingMore(id);
+                      return;
+                    } else if (CONFIG.readDefaultsToAnotherTab) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      createTabOnGroup({
+                        url: link,
+                        active: !CONFIG.dontFocusOnAnotherTabRead,
+                      });
+                    }
                   }}
                   href={link}
                   className="cover"
@@ -215,7 +227,14 @@ export default ({
               <div className={style.list_item}>
                 <div className={style.list_item_image}>
                   <a
-                    href={link}
+                    onClick={async () => {
+                      if (CONFIG.readDefaultsToAnotherTab)
+                        await createTabOnGroup({
+                          url: link,
+                          active: !CONFIG.dontFocusOnAnotherTabRead,
+                        });
+                      else window.open(link, "_self");
+                    }}
                     style={{
                       aspectRatio: `${image.width}/${image.height}`,
                       maxWidth: "100%",
@@ -269,9 +288,18 @@ export default ({
                   })()}
                 </a>
                 <div className={style.list_item_read_button}>
-                  <a href={link}>
-                    <button>READ</button>
-                  </a>
+                  <ButtonLink
+                    href={link}
+                    target={
+                      CONFIG.readDefaultsToAnotherTab
+                        ? CONFIG.dontFocusOnAnotherTabRead
+                          ? "_background"
+                          : "_blank"
+                        : "_self"
+                    }
+                  >
+                    READ
+                  </ButtonLink>
                 </div>
                 <div className={style.list_item_more_button}>
                   <button
@@ -309,6 +337,17 @@ export default ({
           />
           <div className={style.foreground}>
             <a
+              onClick={(ev) => {
+                if (CONFIG.readDefaultsToAnotherTab) {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  createTabOnGroup({
+                    url:
+                      galleryInfo.find((t) => t.id == seeingMore)?.link || "",
+                    active: !CONFIG.dontFocusOnAnotherTabRead,
+                  });
+                }
+              }}
               href={galleryInfo.find((t) => t.id == seeingMore)?.link}
               style={{
                 display: "flex",
@@ -364,7 +403,6 @@ export default ({
             >
               {info[seeingMore]?.title.pretty ||
                 galleryInfo.find((g) => g.id == seeingMore)?.title}
-              SS
             </div>
             {ratings[seeingMore] != undefined && ratings[seeingMore] >= 0 && (
               <div

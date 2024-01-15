@@ -20,6 +20,7 @@ import { SortingContext } from "../context/sortingContext";
 import { MyNHentaiListConfiguration } from "./ConfigPage";
 import { useSyncedDefault } from "../hooks/useStorage";
 import StatusSelector from "../components/StatusSelector";
+import { createTabOnGroup } from "../helpers/tabHelper";
 
 const OBSERVER_SKIP = 10;
 
@@ -391,8 +392,7 @@ export default () => {
                     mergeStorage("sync"),
                     mergeStorage("local"),
                   ]).then(() => {
-                    alert("Imported successfully");
-                    // location.reload();
+                    location.reload();
                   });
                 };
                 reader.readAsText(file);
@@ -587,12 +587,12 @@ export default () => {
             IDS
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               let links = selected.map((id) => `https://nhentai.net/g/${id}/`);
               setSelected([]);
-              for (let link of links) {
-                window.open(link, "_blank");
-              }
+              let currentTab = await chrome.tabs.getCurrent();
+              for (let url of links)
+                await createTabOnGroup({ url }, currentTab);
             }}
           >
             OPEN

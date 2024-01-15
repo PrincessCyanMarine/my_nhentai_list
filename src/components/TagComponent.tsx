@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Tag } from "../models/HentaiInfo";
+import { createTabOnGroup } from "../helpers/tabHelper";
 
 export default ({
   tag,
@@ -27,14 +28,20 @@ export default ({
   return (
     <a
       className={className}
-      onClick={(ev) => onClick && tag && onClick(tag, ev)}
+      onClick={async (ev) => {
+        if (onClick && tag) onClick(tag, ev);
+        else {
+          let url = tag
+            ? `https://nhentai.net/${tag.type}/${tag.name.replace(/\s/, "-")}`
+            : undefined;
+          if (url)
+            createTabOnGroup(
+              { url, active: true },
+              await chrome.tabs.getCurrent()
+            );
+        }
+      }}
       onContextMenu={(e) => onContextMenu && tag && onContextMenu(tag, e)}
-      href={
-        !onClick && tag
-          ? `https://nhentai.net/${tag.type}/${tag.name.replace(/\s/, "-")}`
-          : undefined
-      }
-      target="_blank"
       style={{
         animationDelay: `${animationDelay + 0.1}s`,
       }}
